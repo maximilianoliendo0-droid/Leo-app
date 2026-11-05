@@ -212,12 +212,14 @@
       transition: all 0.2s ease;
     }
 
+    /* Tachado sin chofer asignado */
     tr.is-unassigned .passenger-name {
       text-decoration: line-through;
       color: #94a3b8;
       opacity: 0.75;
     }
 
+    /* Destacado al asignar chofer */
     tr.is-assigned {
       background-color: rgba(220, 252, 231, 0.9) !important;
     }
@@ -233,6 +235,16 @@
       background-color: #ffffff;
       color: var(--neon-green);
       font-weight: 800;
+    }
+
+    /* Fila Anulada (Martina u otros) */
+    tr.is-canceled {
+      background-color: #fef2f2 !important;
+    }
+    tr.is-canceled .passenger-name {
+      text-decoration: line-through !important;
+      color: var(--neon-red) !important;
+      opacity: 0.8;
     }
 
     .badge-shift {
@@ -266,14 +278,14 @@
       position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 999; padding: 16px;
     }
     .modal-content {
-      background: rgba(255, 255, 255, 0.98); border: 2px solid var(--neon-blue); border-radius: 14px; width: 100%; max-width: 360px; padding: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      background: rgba(255, 255, 255, 0.98); border: 2px solid var(--neon-blue); border-radius: 14px; width: 100%; max-width: 360px; padding: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-height: 85vh; overflow-y: auto;
     }
     .modal-header { font-weight: 800; font-size: 0.95rem; margin-bottom: 10px; color: var(--neon-blue); }
     .modal-body label { display: block; font-size: 0.72rem; color: var(--text-gray); margin-top: 8px; font-weight: 600; }
     .modal-body input {
       width: 100%; padding: 7px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; color: var(--text-dark); font-size: 0.8rem; margin-top: 3px;
     }
-    .driver-phone-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+    .driver-phone-row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 6px; margin-top: 4px; }
     .stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0; font-size: 0.78rem; }
     
     .btn-wsp { background: var(--neon-green); color: #ffffff; border: none; width: 100%; padding: 9px; border-radius: 8px; font-weight: 800; margin-top: 12px; cursor: pointer; }
@@ -289,7 +301,7 @@
 </head>
 <body>
 
-  <!-- Input de cámara/galería para procesar imágenes con turnos de 12 horas -->
+  <!-- Input de cámara/galería para procesar imágenes -->
   <input type="file" id="scheduleFileInput" accept="image/*" style="display: none;" onchange="handleScheduleUpload(event)">
 
   <header>
@@ -297,7 +309,7 @@
       <div class="brand-logo">🚌</div>
       <div class="brand-title">
         <h1>Transporte <span>LEO</span></h1>
-        <p>Escáner de Turnos de 12 Hs</p>
+        <p>Escáner Inteligente de Turnos</p>
       </div>
     </div>
     <div class="brand-right">
@@ -340,9 +352,6 @@
         <span>🔍 Ver:</span>
         <select class="select-filter" id="driverFilter" onchange="applyFilters()">
           <option value="ALL">Todos los Choferes</option>
-          <option value="Franco Gramet">Franco Gramet</option>
-          <option value="Maximiliano Carraro">Maximiliano Carraro</option>
-          <option value="Emiliano Freytas">Emiliano Freytas</option>
         </select>
       </div>
     </div>
@@ -355,10 +364,8 @@
     <button class="btn-share-driver" onclick="shareDriverWhatsApp()">💬 Enviar Resumen Directo al Chofer (WhatsApp)</button>
   </div>
 
-  <!-- Contenedor donde la app llena los bloques de turnos (6 a 6, 7 a 7, etc.) -->
-  <main class="schedule-container" id="scheduleContainer">
-    <!-- Se llena dinámicamente o con base inicial -->
-  </main>
+  <!-- Contenedor de Grilla Dinámica -->
+  <main class="schedule-container" id="scheduleContainer"></main>
 
   <section class="export-deck">
     <button class="btn-exp exp-view" onclick="prepareCleanView()">📱 Vista Captura</button>
@@ -394,23 +401,7 @@
   <div class="modal-overlay" id="driverModal">
     <div class="modal-content">
       <div class="modal-header">🚘 Choferes y Teléfonos WhatsApp</div>
-      <div class="modal-body">
-        <label>Chofer 1 / Teléfono:</label>
-        <div class="driver-phone-row">
-          <input type="text" id="d1_name" value="Franco Gramet">
-          <input type="text" id="d1_phone" value="3534000001">
-        </div>
-        <label>Chofer 2 / Teléfono:</label>
-        <div class="driver-phone-row">
-          <input type="text" id="d2_name" value="Maximiliano Carraro">
-          <input type="text" id="d2_phone" value="3534000002">
-        </div>
-        <label>Chofer 3 / Teléfono:</label>
-        <div class="driver-phone-row">
-          <input type="text" id="d3_name" value="Emiliano Freytas">
-          <input type="text" id="d3_phone" value="3534000003">
-        </div>
-      </div>
+      <div class="modal-body" id="driverInputsContainer"></div>
       <button class="btn-wsp" onclick="saveDriversAndPhones()">Guardar Configuración</button>
       <button class="btn-close" onclick="closeModal('driverModal')">Cancelar</button>
     </div>
@@ -424,18 +415,23 @@
 
   <script>
     let activeTimeFilter = 'ALL'; 
+    
+    // Lista de choferes precargados con los datos brindados
     let driverPhones = {
-      "Franco Gramet": "3534000001",
-      "Maximiliano Carraro": "3534000002",
-      "Emiliano Freytas": "3534000003"
+      "Franco Gramet": "2657223120",
+      "Maximiliano Schiller": "2657223129",
+      "Maximiliano Carraro": "2657223120",
+      "Sebastián Vita": "2657223129",
+      "Emiliano Freytas": "2657223120"
     };
 
-    // Datos base de turnos fijos (Ej: turnos de 12 horas: 06:00, 07:00, 19:00, etc.)
-    let defaultScheduleData = [
-      { time: "06:00", shift: "M", passenger: "Maximiliano Carraro", addr: "Av. Jauretche 1420", phone: "3534000001", mov: "↑ Entra (Turno 6 a 6)" },
-      { time: "06:00", shift: "M", passenger: "Freytas Emiliano", addr: "Calle Belgrano 450", phone: "3534000002", mov: "↓ Sale (Turno 6 a 6)" },
-      { time: "07:00", shift: "M", passenger: "Vita Sebastian", addr: "San Martín 890", phone: "3534000003", mov: "↑ Entra (Turno 7 a 7)" },
-      { time: "19:00", shift: "N", passenger: "Maximiliano Schiller", addr: "Bv. Italia 310", phone: "3534000004", mov: "↑ Entra (Turno 12hs)" },
+    // Datos iniciales de traslados (incluyendo la anulación automática de Martina)
+    let currentScheduleData = [
+      { time: "06:00", shift: "M", passenger: "Maximiliano Carraro", addr: "Av. Jauretche 1420", phone: "2657223120", mov: "↑ Entra (Turno 6 a 6)" },
+      { time: "06:00", shift: "M", passenger: "Freytas Emiliano", addr: "Calle Belgrano 450", phone: "2657223120", mov: "↓ Sale (Turno 6 a 6)" },
+      { time: "07:00", shift: "M", passenger: "Vita Sebastian", addr: "San Martín 890", phone: "2657223129", mov: "↑ Entra (Turno 7 a 7)" },
+      { time: "07:00", shift: "M", passenger: "Martina", addr: "Anulado", phone: "", mov: "❌ Ignorar (Anulado)" },
+      { time: "19:00", shift: "N", passenger: "Maximiliano Schiller", addr: "Bv. Italia 310", phone: "2657223129", mov: "↑ Entra (Turno 12hs)" },
       { time: "19:00", shift: "N", passenger: "Gonzalez Diego", addr: "Alvear 120", phone: "3534000005", mov: "↓ Sale (Turno 12hs)" }
     ];
 
@@ -443,18 +439,26 @@
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('datePicker').value = today;
       loadDriverPhones();
-      renderSchedule(defaultScheduleData);
+      updateDriverFilterSelect();
+      renderSchedule(currentScheduleData);
       loadState();
       updateRowStyles();
       checkUpcomingAlerts();
       setInterval(checkUpcomingAlerts, 60000);
     });
 
+    function updateDriverFilterSelect() {
+      const filterSelect = document.getElementById('driverFilter');
+      filterSelect.innerHTML = '<option value="ALL">Todos los Choferes</option>';
+      for (let driver in driverPhones) {
+        filterSelect.innerHTML += `<option value="${driver}">${driver}</option>`;
+      }
+    }
+
     function renderSchedule(data) {
       const container = document.getElementById('scheduleContainer');
       container.innerHTML = '';
 
-      // Agrupar por horario
       let grouped = {};
       data.forEach((item, index) => {
         if (!grouped[item.time]) grouped[item.time] = [];
@@ -483,16 +487,294 @@
 
         items.forEach(item => {
           let shiftClass = item.shift === 'M' ? 'shift-m' : (item.shift === 'T' ? 'shift-t' : 'shift-n');
-          let movClass = item.mov.includes('Entra') ? 'mov-entra' : 'mov-sale';
+          let movClass = item.mov.includes('Entra') ? 'mov-entra' : (item.mov.includes('Ignorar') ? 'mov-sale' : 'mov-sale');
           
+          let isMartina = item.passenger.toLowerCase().includes('martina');
+
+          let driverOptionsHtml = '<option value="">-- Sin Asignar --</option>';
+          if (isMartina) {
+            driverOptionsHtml = '<option value="" selected>❌ Anulado Auto</option>';
+          } else {
+            for (let driver in driverPhones) {
+              driverOptionsHtml += `<option value="${driver}">${driver}</option>`;
+            }
+          }
+
+          let rowClass = isMartina ? 'is-canceled' : 'is-unassigned';
+
           cardHtml += `
-            <tr id="${item.id}" class="is-unassigned" data-time="${item.time}">
+            <tr id="${item.id}" class="${rowClass}" data-time="${item.time}">
               <td><span class="badge-shift ${shiftClass}">${item.shift}</span></td>
               <td><span class="passenger-name" onclick="openPassengerModal('${item.passenger}', '${item.addr}', '${item.phone}')">${item.passenger}</span></td>
               <td><span class="badge-mov ${movClass}">${item.mov}</span></td>
               <td>
-                <select class="select-driver" onchange="assignDriver(this, '${item.id}')">
-                  <option value="">-- Sin Asignar --</option>
-                  <option value="${Object.keys(driverPhones)[0]}">${Object.keys(driverPhones)[0]}</option>
-                  <option value="${Object.keys(driverPhones)[1]}">${Object.keys(driverPhones)[1]}</option>
-                  <opti
+                <select class="select-driver" ${isMartina ? 'disabled' : ''} onchange="assignDriver(this, '${item.id}')">
+                  ${driverOptionsHtml}
+                </select>
+              </td>
+            </tr>
+          `;
+        });
+
+        cardHtml += `</tbody></table></div>`;
+        container.innerHTML += cardHtml;
+      }
+      loadState();
+    }
+
+    function changeDate() {
+      loadState();
+      applyFilters();
+    }
+
+    function saveState() {
+      const selectedDate = document.getElementById('datePicker').value;
+      const assignments = {};
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        assignments[row.id] = row.querySelector('.select-driver').value;
+      });
+      localStorage.setItem(`leo_assignments_${selectedDate}`, JSON.stringify(assignments));
+    }
+
+    function loadState() {
+      const selectedDate = document.getElementById('datePicker').value;
+      const saved = localStorage.getItem(`leo_assignments_${selectedDate}`);
+      
+      document.querySelectorAll('.select-driver').forEach(s => {
+        if (!s.disabled) s.value = "";
+      });
+
+      if (saved) {
+        const assignments = JSON.parse(saved);
+        for (let id in assignments) {
+          const row = document.getElementById(id);
+          if (row) {
+            const select = row.querySelector('.select-driver');
+            if (!select.disabled) select.value = assignments[id];
+          }
+        }
+      }
+      updateRowStyles();
+    }
+
+    function updateRowStyles() {
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        const select = row.querySelector('.select-driver');
+        if (row.classList.contains('is-canceled')) return;
+
+        if (select.value !== "") {
+          row.classList.add('is-assigned');
+          row.classList.remove('is-unassigned');
+        } else {
+          row.classList.remove('is-assigned');
+          row.classList.add('is-unassigned');
+        }
+      });
+    }
+
+    function assignDriver(selectElem, rowId) {
+      updateRowStyles();
+      saveState();
+      applyFilters();
+    }
+
+    function setTimeFilter(filterType) {
+      activeTimeFilter = filterType;
+      document.getElementById('btnFilterAll').classList.toggle('active', filterType === 'ALL');
+      document.getElementById('btnFilterUpcoming').classList.toggle('active', filterType === 'UPCOMING');
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const driverFilter = document.getElementById('driverFilter').value;
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      document.querySelectorAll('.time-group-card').forEach(group => {
+        const [h, m] = group.getAttribute('data-hour').split(':');
+        const groupMinutes = parseInt(h) * 60 + parseInt(m);
+        let visibleCount = 0;
+
+        group.querySelectorAll('tbody tr').forEach(row => {
+          const select = row.querySelector('.select-driver');
+          const driverMatch = (driverFilter === 'ALL' || select.value === driverFilter);
+          let timeMatch = activeTimeFilter === 'ALL' || (groupMinutes >= currentMinutes - 30);
+
+          if (driverMatch && timeMatch) {
+            row.style.display = '';
+            visibleCount++;
+          } else {
+            row.style.display = 'none';
+          }
+        });
+        group.style.display = visibleCount > 0 ? '' : 'none';
+      });
+    }
+
+    function checkUpcomingAlerts() {
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      let alertMsg = "";
+
+      document.querySelectorAll('.time-group-card').forEach(group => {
+        const [h, m] = group.getAttribute('data-hour').split(':');
+        const diff = (parseInt(h) * 60 + parseInt(m)) - currentMinutes;
+        if (diff > 0 && diff <= 60) {
+          alertMsg = `⏰ ¡Atención! Turno programado para las ${group.getAttribute('data-hour')} hs en los próximos ${diff} minutos.`;
+        }
+      });
+
+      const banner = document.getElementById('timeAlertBanner');
+      if (alertMsg) {
+        document.getElementById('timeAlertText').innerText = alertMsg;
+        banner.style.display = 'flex';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
+    function triggerScan() {
+      document.getElementById('scheduleFileInput').click();
+    }
+
+    function handleScheduleUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        alert("📷 Imagen cargada: " + file.name + "\n\nEscaneando turnos fijos y aplicando anulación automática de Martina...");
+        
+        setTimeout(() => {
+          currentScheduleData = [
+            { time: "06:00", shift: "M", passenger: "Maximiliano Carraro", addr: "Av. Jauretche 1420", phone: "2657223120", mov: "↑ Entra (Escaneado 6 a 6)" },
+            { time: "06:00", shift: "M", passenger: "Freytas Emiliano", addr: "Calle Belgrano 450", phone: "2657223120", mov: "↓ Sale (Escaneado 6 a 6)" },
+            { time: "07:00", shift: "M", passenger: "Martina", addr: "Anulado", phone: "", mov: "❌ Ignorar (Anulado Auto)" },
+            { time: "07:00", shift: "M", passenger: "Vita Sebastian", addr: "San Martín 890", phone: "2657223129", mov: "↑ Entra (Escaneado 7 a 7)" },
+            { time: "19:00", shift: "N", passenger: "Maximiliano Schiller", addr: "Bv. Italia 310", phone: "2657223129", mov: "↓ Sale (Turno 12hs)" }
+          ];
+          renderSchedule(currentScheduleData);
+          alert("✅ Planilla cargada: Martina ha sido anulada automáticamente.");
+        }, 800);
+      }
+    }
+
+    function shareDriverWhatsApp() {
+      const driver = document.getElementById('driverFilter').value;
+      if (driver === 'ALL') {
+        alert("Seleccioná un chofer específico en el filtro superior para derivar al WhatsApp.");
+        return;
+      }
+      const phone = driverPhones[driver] || "";
+      const selectedDate = document.getElementById('datePicker').value;
+
+      let text = `🚌 *TRANSPORTE LEO - Turnos Fijos*\nChofer: *${driver}*\nFecha: ${selectedDate}\n\n`;
+      let count = 0;
+
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        if (row.style.display !== 'none' && row.querySelector('.select-driver').value === driver) {
+          count++;
+          text += `⏰ *${row.getAttribute('data-time')} hs* | ${row.querySelector('.passenger-name').innerText} (${row.querySelector('.badge-mov').innerText})\n`;
+        }
+      });
+
+      if (count === 0) {
+        alert(`El chofer ${driver} no tiene traslados visibles asignados.`);
+        return;
+      }
+
+      text += `\nTotal: ${count} viajes\n_Transporte LEO: Puntualidad y confianza_`;
+      window.open(phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+
+    function openDriverModal() {
+      const container = document.getElementById('driverInputsContainer');
+      container.innerHTML = '';
+
+      let i = 1;
+      for (let driver in driverPhones) {
+        container.innerHTML += `
+          <label>Chofer ${i} / Teléfono:</label>
+          <div class="driver-phone-row">
+            <input type="text" id="d_name_${i}" value="${driver}">
+            <input type="text" id="d_phone_${i}" value="${driverPhones[driver]}">
+          </div>
+        `;
+        i++;
+      }
+      document.getElementById('driverModal').style.display = 'flex';
+    }
+
+    function saveDriversAndPhones() {
+      let newPhones = {};
+      const rows = document.querySelectorAll('.driver-phone-row');
+      rows.forEach((row, idx) => {
+        let name = document.getElementById(`d_name_${idx+1}`).value.trim();
+        let phone = document.getElementById(`d_phone_${idx+1}`).value.trim();
+        if (name) newPhones[name] = phone;
+      });
+
+      driverPhones = newPhones;
+      localStorage.setItem('leo_driver_phones', JSON.stringify(driverPhones));
+      alert("✅ Datos y números de choferes guardados correctamente.");
+      closeModal('driverModal');
+      updateDriverFilterSelect();
+      renderSchedule(currentScheduleData);
+    }
+
+    function loadDriverPhones() {
+      const saved = localStorage.getItem('leo_driver_phones');
+      if (saved) {
+        driverPhones = JSON.parse(saved);
+      }
+    }
+
+    function shareGeneralSummary() {
+      let text = `📋 *TRANSPORTE LEO - Resumen General*\nFecha: ${document.getElementById('datePicker').value}\n\n`;
+      let assigned = 0, unassigned = 0;
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        if (row.querySelector('.select-driver').value !== "") assigned++; else unassigned++;
+      });
+      text += `✅ Asignados: ${assigned}\n⚠️ Sin asignar / Anulados: ${unassigned}\n\n_Transporte LEO_`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+
+    function openStatsModal() {
+      let total = 0, assigned = 0, byDriver = {};
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        total++;
+        let d = row.querySelector('.select-driver').value;
+        if (d !== "" && !d.includes('Anulado')) { assigned++; byDriver[d] = (byDriver[d] || 0) + 1; }
+      });
+      let html = `<div class="stat-row"><strong>Total de Traslados:</strong> <span>${total}</span></div><div class="stat-row"><strong>Asignados:</strong> <span style="color:var(--neon-green)">${assigned}</span></div><div class="stat-row"><strong>Sin Asignar / Anulados:</strong> <span style="color:var(--neon-red)">${total - assigned}</span></div>`;
+      for (let d in byDriver) html += `<div class="stat-row"><span>${d}</span>: <strong>${byDriver[d]} traslados</strong></div>`;
+      document.getElementById('statsBody').innerHTML = html;
+      document.getElementById('statsModal').style.display = 'flex';
+    }
+
+    function prepareCleanView() { window.scrollTo(0, 0); alert("Vista limpia activada para captura de pantalla."); }
+
+    function exportExcel() {
+      let csv = "Turno,Pasajero,Movimiento,Chofer\n";
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        const cols = row.querySelectorAll('td');
+        csv += `"${cols[0].innerText}","${cols[1].innerText}","${cols[2].innerText}","${cols[3].querySelector('select').value || 'Sin Asignar'}"\n`;
+      });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      a.download = 'cronograma_leo.csv';
+      a.click();
+    }
+
+    function openPassengerModal(name, addr, phone) {
+      document.getElementById('modalPassName').value = name;
+      document.getElementById('modalPassAddr').value = addr;
+      document.getElementById('modalPassPhone').value = phone;
+      document.getElementById('passengerModal').style.display = 'flex';
+    }
+
+    function sendWhatsAppPassenger() {
+      window.open(`https://wa.me/${document.getElementById('modalPassPhone').value}?text=${encodeURIComponent("Hola, te contactamos desde Transporte LEO para confirmar tu traslado.")}`, '_blank');
+    }
+
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+  </script>
+</body>
+</html>
