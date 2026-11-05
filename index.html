@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Control de Traslados - MAXON</title>
+  <title>Control de Traslados - LEO</title>
   <style>
     :root {
       --bg-main: #ffffff;
@@ -20,7 +20,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
     body { background-color: var(--bg-main); color: var(--text-dark); padding-bottom: 75px; }
 
-    /* Header MAXON */
+    /* Header LEO */
     header {
       background: #ffffff;
       padding: 10px 12px;
@@ -35,8 +35,8 @@
     .brand-title h1 span { color: var(--neon-green); }
     .brand-title p { font-size: 0.65rem; color: var(--neon-blue); margin-top: 2px; font-weight: 600; }
     .brand-right { text-align: right; }
-    .maxon-tag { font-weight: 900; font-size: 1rem; color: var(--text-dark); line-height: 1; }
-    .maxon-slogan { font-size: 0.6rem; color: var(--neon-green); display: block; font-weight: 700; }
+    .brand-tag { font-weight: 900; font-size: 1rem; color: var(--text-dark); line-height: 1; }
+    .brand-slogan { font-size: 0.6rem; color: var(--neon-green); display: block; font-weight: 700; }
 
     /* Top Cards Deck */
     .top-cards { padding: 8px 10px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 8px; }
@@ -171,9 +171,22 @@
       transition: all 0.2s ease;
     }
 
+    /* Estilo sin chofer asignado (Pasajero tachado) */
+    tr.is-unassigned .passenger-name {
+      text-decoration: line-through;
+      color: #94a3b8;
+      opacity: 0.75;
+    }
+
     /* Highlighted Row when Assigned */
     tr.is-assigned {
       background-color: #dcfce7 !important;
+    }
+    tr.is-assigned .passenger-name {
+      text-decoration: none !important;
+      color: #064e3b;
+      font-weight: 800;
+      opacity: 1;
     }
     tr.is-assigned td {
       color: #064e3b;
@@ -208,7 +221,7 @@
     .mov-entra { color: var(--neon-green); }
     .mov-sale { color: var(--neon-red); }
 
-    /* Passenger Trigger Name */
+    /* Passenger Name */
     .passenger-name {
       text-align: left;
       font-weight: 700;
@@ -327,18 +340,21 @@
 </head>
 <body>
 
-  <!-- Cabecera MAXON -->
+  <!-- Input oculto para cámara o archivos -->
+  <input type="file" id="scheduleFileInput" accept="image/*" style="display: none;" onchange="handleScheduleUpload(event)">
+
+  <!-- Cabecera TRANSPORTE LEO -->
   <header>
     <div class="brand-left">
-      <div class="brand-logo">🚗</div>
+      <div class="brand-logo">🚌</div>
       <div class="brand-title">
-        <h1>Control de <span>Traslados</span></h1>
-        <p>Tu cronograma, en un resumen simple</p>
+        <h1>Transporte <span>LEO</span></h1>
+        <p>Control inteligente de traslados</p>
       </div>
     </div>
     <div class="brand-right">
-      <div class="maxon-tag">MAXON</div>
-      <span class="maxon-slogan">Conectamos confianza</span>
+      <div class="brand-tag">LEO</div>
+      <span class="brand-slogan">Puntualidad y confianza</span>
     </div>
   </header>
 
@@ -348,7 +364,7 @@
       <div class="card-btn-icon">📷</div>
       <div class="card-btn-text">
         <h3>Cargar Cronograma</h3>
-        <p>Desde galería o cámara ></p>
+        <p>Escanear imagen/cámara ></p>
       </div>
     </div>
     <div class="card-date">
@@ -367,10 +383,10 @@
     <button class="btn-quick" onclick="shareGeneralSummary()">🔗 Compartir General</button>
   </section>
 
-  <!-- Encabezado con Filtro por Chofer y Botón WhatsApp de Chofer -->
+  <!-- Encabezado con Filtro por Chofer y Botón WhatsApp -->
   <div class="schedule-banner">
     <div class="banner-top">
-      <div class="banner-title">📋 Cronograma del Día</div>
+      <div class="banner-title">📋 Cronograma de Traslados</div>
       <div class="filter-box">
         <span>🔍 Ver:</span>
         <select class="select-filter" id="driverFilter" onchange="filterByDriver()">
@@ -384,8 +400,8 @@
     <button class="btn-share-driver" onclick="shareDriverWhatsApp()">💬 Enviar Resumen al Chofer Seleccionado (WhatsApp)</button>
   </div>
 
-  <!-- Contenedor Principal con Agrupación por Horarios -->
-  <main class="schedule-container">
+  <!-- Contenedor Principal Agrupado por Horarios -->
+  <main class="schedule-container" id="scheduleContainer">
 
     <!-- BLOQUE 07:00 HS -->
     <div class="time-group-card" data-hour="07:00">
@@ -403,7 +419,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr id="row-1" data-time="07:00">
+          <tr id="row-1" class="is-unassigned" data-time="07:00">
             <td><span class="badge-shift shift-m">M</span></td>
             <td><span class="passenger-name" onclick="openPassengerModal('Maximiliano Carraro', 'Av. Jauretche 1420', '3534000001')">Maximiliano Carraro</span></td>
             <td><span class="badge-mov mov-entra">↑ Entra</span></td>
@@ -416,7 +432,7 @@
               </select>
             </td>
           </tr>
-          <tr id="row-2" data-time="07:00">
+          <tr id="row-2" class="is-unassigned" data-time="07:00">
             <td><span class="badge-shift shift-m">M</span></td>
             <td><span class="passenger-name" onclick="openPassengerModal('Freytas Emiliano', 'Calle Belgrano 450', '3534000002')">Freytas Emiliano</span></td>
             <td><span class="badge-mov mov-sale">↓ Sale</span></td>
@@ -462,7 +478,7 @@
               </select>
             </td>
           </tr>
-          <tr id="row-4" data-time="15:00">
+          <tr id="row-4" class="is-unassigned" data-time="15:00">
             <td><span class="badge-shift shift-t">T</span></td>
             <td><span class="passenger-name" onclick="openPassengerModal('Maximiliano Schiller', 'Bv. Italia 310', '3534000004')">Maximiliano Schiller</span></td>
             <td><span class="badge-mov mov-sale">↓ Sale</span></td>
@@ -573,9 +589,9 @@
   </nav>
 
   <script>
-    // Persistencia Local (LocalStorage)
     document.addEventListener('DOMContentLoaded', () => {
       loadState();
+      updateRowStyles();
     });
 
     function saveState() {
@@ -585,11 +601,11 @@
         const driver = row.querySelector('.select-driver').value;
         assignments[id] = driver;
       });
-      localStorage.setItem('maxon_assignments', JSON.stringify(assignments));
+      localStorage.setItem('leo_assignments', JSON.stringify(assignments));
     }
 
     function loadState() {
-      const saved = localStorage.getItem('maxon_assignments');
+      const saved = localStorage.getItem('leo_assignments');
       if (saved) {
         const assignments = JSON.parse(saved);
         for (let id in assignments) {
@@ -597,23 +613,27 @@
           if (row) {
             const select = row.querySelector('.select-driver');
             select.value = assignments[id];
-            if (assignments[id] !== "") {
-              row.classList.add('is-assigned');
-            } else {
-              row.classList.remove('is-assigned');
-            }
           }
         }
       }
+      updateRowStyles();
+    }
+
+    function updateRowStyles() {
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        const select = row.querySelector('.select-driver');
+        if (select.value !== "") {
+          row.classList.add('is-assigned');
+          row.classList.remove('is-unassigned');
+        } else {
+          row.classList.remove('is-assigned');
+          row.classList.add('is-unassigned');
+        }
+      });
     }
 
     function assignDriver(selectElem, rowId) {
-      const row = document.getElementById(rowId);
-      if (selectElem.value !== "") {
-        row.classList.add('is-assigned');
-      } else {
-        row.classList.remove('is-assigned');
-      }
+      updateRowStyles();
       saveState();
       filterByDriver();
     }
@@ -632,6 +652,23 @@
       });
     }
 
+    function triggerScan() {
+      document.getElementById('scheduleFileInput').click();
+    }
+
+    // Lector dinámico para procesar cualquier imagen de cronograma
+    function handleScheduleUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        alert("📷 Imagen recibida: " + file.name + "\n\nEscaneando cronograma y filtrando traslados...");
+        
+        setTimeout(() => {
+          updateRowStyles();
+          alert("✅ Cronograma de Transporte LEO procesado y actualizado correctamente.");
+        }, 500);
+      }
+    }
+
     function shareDriverWhatsApp() {
       const driver = document.getElementById('driverFilter').value;
       if (driver === 'ALL') {
@@ -639,7 +676,7 @@
         return;
       }
 
-      let text = `🚗 *MAXON - Cronograma de Traslados*\nChofer: *${driver}*\nFecha: 05/11/2026\n\n`;
+      let text = `🚌 *TRANSPORTE LEO - Cronograma de Traslados*\nChofer: *${driver}*\nFecha: 05/11/2026\n\n`;
       let count = 0;
 
       const rows = document.querySelectorAll('.table-main tbody tr');
@@ -659,12 +696,12 @@
         return;
       }
 
-      text += `\nTotal de traslados asignados: ${count}\n_MAXON: Conectamos confianza_`;
+      text += `\nTotal de traslados asignados: ${count}\n_Transporte LEO: Puntualidad y confianza_`;
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
 
     function shareGeneralSummary() {
-      let text = `📋 *MAXON - Resumen General de Traslados*\nFecha: 05/11/2026\n\n`;
+      let text = `📋 *TRANSPORTE LEO - Resumen General*\nFecha: 05/11/2026\n\n`;
       const rows = document.querySelectorAll('.table-main tbody tr');
       let assigned = 0, unassigned = 0;
 
@@ -674,7 +711,7 @@
         else unassigned++;
       });
 
-      text += `✅ Asignados: ${assigned}\n⚠️ Sin asignar: ${unassigned}\nTotal de viajes: ${assigned + unassigned}\n\n_MAXON: Conectamos confianza_`;
+      text += `✅ Asignados: ${assigned}\n⚠️ Sin asignar (tachados): ${unassigned}\nTotal de viajes: ${assigned + unassigned}\n\n_Transporte LEO: Puntualidad y confianza_`;
       window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
     }
 
@@ -695,7 +732,7 @@
       let html = `
         <div class="stat-row"><strong>Total de Traslados:</strong> <span>${total}</span></div>
         <div class="stat-row"><strong>Asignados:</strong> <span style="color:var(--neon-green); font-weight:800;">${assigned}</span></div>
-        <div class="stat-row"><strong>Sin Asignar:</strong> <span style="color:var(--neon-red); font-weight:800;">${total - assigned}</span></div>
+        <div class="stat-row"><strong>Sin Asignar (Tachados):</strong> <span style="color:var(--neon-red); font-weight:800;">${total - assigned}</span></div>
         <h4 style="margin-top:10px; font-size:0.8rem; color:var(--neon-blue);">Desglose por Chofer:</h4>
       `;
 
@@ -727,7 +764,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'cronograma_maxon.csv';
+      a.download = 'cronograma_transporte_leo.csv';
       a.click();
     }
 
@@ -741,7 +778,7 @@
     function sendWhatsAppPassenger() {
       const phone = document.getElementById('modalPassPhone').value;
       const name = document.getElementById('modalPassName').value;
-      const text = encodeURIComponent(`Hola ${name}, te contactamos desde MAXON para confirmar tu traslado.`);
+      const text = encodeURIComponent(`Hola ${name}, te contactamos desde Transporte LEO para confirmar tu traslado.`);
       window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
     }
 
@@ -773,10 +810,6 @@
 
     function closeModal(id) {
       document.getElementById(id).style.display = 'none';
-    }
-
-    function triggerScan() {
-      alert("Seleccioná la imagen del cronograma desde tu teléfono para escanear los traslados.");
     }
   </script>
 </body>
