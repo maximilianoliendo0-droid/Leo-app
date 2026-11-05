@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Control de Traslados - LEO</title>
+  <title>Transporte LEO - Control Inteligente</title>
   <style>
     :root {
-      --bg-main: #ffffff;
-      --card-bg: #f8fafc;
-      --card-border: #e2e8f0;
+      --bg-main: #f1f5f9;
       --neon-green: #16a34a;
       --neon-blue: #0284c7;
       --neon-purple: #9333ea;
@@ -18,16 +16,24 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
-    body { background-color: var(--bg-main); color: var(--text-dark); padding-bottom: 75px; }
+    body { 
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); 
+      color: var(--text-dark); 
+      padding-bottom: 75px; 
+      min-height: 100vh;
+    }
 
-    /* Header LEO */
     header {
-      background: #ffffff;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
       padding: 10px 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 2px solid #e2e8f0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
     .brand-left { display: flex; align-items: center; gap: 8px; }
     .brand-logo { width: 36px; height: 36px; background: #f0fdf4; border: 2px solid var(--neon-green); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
@@ -38,10 +44,23 @@
     .brand-tag { font-weight: 900; font-size: 1rem; color: var(--text-dark); line-height: 1; }
     .brand-slogan { font-size: 0.6rem; color: var(--neon-green); display: block; font-weight: 700; }
 
-    /* Top Cards Deck */
-    .top-cards { padding: 8px 10px; display: grid; grid-template-columns: 1.3fr 1fr; gap: 8px; }
+    .alert-banner {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+      margin: 8px 10px 0;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .top-cards { padding: 8px 10px; display: grid; grid-template-columns: 1.2fr 1fr; gap: 8px; }
     .card-btn {
-      background: #f0f9ff;
+      background: rgba(240, 249, 255, 0.9);
       border: 1px solid var(--neon-blue);
       border-radius: 12px;
       padding: 8px;
@@ -56,7 +75,7 @@
     .card-btn-text p { font-size: 0.62rem; color: #0284c7; margin-top: 2px; }
 
     .card-date {
-      background: #f0fdf4;
+      background: rgba(240, 253, 244, 0.9);
       border: 1px solid var(--neon-green);
       border-radius: 12px;
       padding: 6px 8px;
@@ -66,12 +85,20 @@
     }
     .card-date-icon { font-size: 1.3rem; }
     .card-date-text span { font-size: 0.58rem; color: var(--text-gray); display: block; }
-    .card-date-text strong { font-size: 0.78rem; color: #15803d; }
+    .card-date-text input {
+      background: transparent;
+      border: none;
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #15803d;
+      outline: none;
+      cursor: pointer;
+      width: 100%;
+    }
 
-    /* Quick Action Nav */
     .quick-nav { padding: 0 10px 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .btn-quick {
-      background: #ffffff;
+      background: rgba(255, 255, 255, 0.9);
       border: 1px solid #cbd5e1;
       color: var(--text-dark);
       padding: 6px 2px;
@@ -86,10 +113,9 @@
       gap: 3px;
     }
 
-    /* Schedule Header & Filter Banner */
     .schedule-banner {
       margin: 0 10px 8px;
-      background: #f8fafc;
+      background: rgba(255, 255, 255, 0.9);
       border: 1px solid #cbd5e1;
       border-radius: 8px;
       padding: 8px 10px;
@@ -110,6 +136,24 @@
       font-weight: 700;
       outline: none;
     }
+    .time-filter-toggle { display: flex; gap: 4px; margin-top: 2px; }
+    .btn-toggle-time {
+      flex: 1;
+      padding: 5px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      border: 1px solid #94a3b8;
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--text-dark);
+      cursor: pointer;
+      text-align: center;
+    }
+    .btn-toggle-time.active {
+      background: var(--neon-blue);
+      color: #ffffff;
+      border-color: var(--neon-blue);
+    }
     .btn-share-driver {
       background: var(--neon-green);
       color: #fff;
@@ -126,20 +170,18 @@
       width: 100%;
     }
 
-    /* Container for Schedule */
     .schedule-container { padding: 0 8px; display: flex; flex-direction: column; gap: 12px; }
 
-    /* Grouping Card by Hour */
     .time-group-card {
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(203, 213, 225, 0.8);
       border-left: 4px solid var(--neon-blue);
       border-radius: 10px;
       overflow: hidden;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.03);
     }
     .time-group-header {
-      background: #f1f5f9;
+      background: rgba(241, 245, 249, 0.95);
       padding: 6px 10px;
       display: flex;
       justify-content: space-between;
@@ -149,10 +191,9 @@
     .time-title { font-size: 0.82rem; font-weight: 800; color: var(--neon-blue); display: flex; align-items: center; gap: 6px; }
     .time-count { font-size: 0.62rem; background: #e2e8f0; color: var(--text-dark); padding: 2px 6px; border-radius: 8px; font-weight: 700; }
 
-    /* Table Styling */
     .table-main { width: 100%; border-collapse: collapse; table-layout: fixed; }
     .table-main th {
-      background: #f8fafc;
+      background: rgba(248, 250, 252, 0.9);
       color: var(--text-gray);
       font-size: 0.63rem;
       padding: 6px 2px;
@@ -171,16 +212,14 @@
       transition: all 0.2s ease;
     }
 
-    /* Estilo sin chofer asignado (Pasajero tachado) */
     tr.is-unassigned .passenger-name {
       text-decoration: line-through;
       color: #94a3b8;
       opacity: 0.75;
     }
 
-    /* Highlighted Row when Assigned */
     tr.is-assigned {
-      background-color: #dcfce7 !important;
+      background-color: rgba(220, 252, 231, 0.9) !important;
     }
     tr.is-assigned .passenger-name {
       text-decoration: none !important;
@@ -188,10 +227,7 @@
       font-weight: 800;
       opacity: 1;
     }
-    tr.is-assigned td {
-      color: #064e3b;
-      font-weight: 700;
-    }
+    tr.is-assigned td { color: #064e3b; font-weight: 700; }
     tr.is-assigned .select-driver {
       border-color: var(--neon-green);
       background-color: #ffffff;
@@ -199,139 +235,52 @@
       font-weight: 800;
     }
 
-    /* Shift Badges */
     .badge-shift {
-      width: 19px;
-      height: 19px;
-      border-radius: 4px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 800;
-      font-size: 0.65rem;
-      color: #fff;
-      margin: 0 auto;
+      width: 19px; height: 19px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.65rem; color: #fff; margin: 0 auto;
     }
     .shift-m { background-color: var(--neon-blue); }
     .shift-t { background-color: var(--neon-green); }
     .shift-n { background-color: var(--neon-purple); }
 
-    /* Movement Badges */
     .badge-mov { font-size: 0.68rem; font-weight: 800; display: inline-flex; align-items: center; gap: 2px; }
     .mov-entra { color: var(--neon-green); }
     .mov-sale { color: var(--neon-red); }
 
-    /* Passenger Name */
     .passenger-name {
-      text-align: left;
-      font-weight: 700;
-      color: var(--text-dark);
-      cursor: pointer;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      display: block;
+      text-align: left; font-weight: 700; color: var(--text-dark); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
     }
 
-    /* Driver Select */
     .select-driver {
-      background: #ffffff;
-      color: var(--text-dark);
-      border: 1px solid #94a3b8;
-      border-radius: 6px;
-      padding: 4px 2px;
-      font-size: 0.68rem;
-      width: 100%;
-      text-align: center;
-      outline: none;
-      cursor: pointer;
+      background: #ffffff; color: var(--text-dark); border: 1px solid #94a3b8; border-radius: 6px; padding: 4px 2px; font-size: 0.68rem; width: 100%; text-align: center; outline: none; cursor: pointer;
     }
 
-    /* Export Buttons Bar */
     .export-deck { padding: 12px 8px 6px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .btn-exp {
-      border: none;
-      padding: 8px 2px;
-      border-radius: 8px;
-      font-size: 0.68rem;
-      font-weight: 800;
-      color: #fff;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
+      border: none; padding: 8px 2px; border-radius: 8px; font-size: 0.68rem; font-weight: 800; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 3px;
     }
     .exp-excel { background: #16a34a; }
     .exp-print { background: #9333ea; }
     .exp-view { background: #0284c7; }
 
-    /* Modals */
     .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 999;
-      padding: 16px;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 999; padding: 16px;
     }
     .modal-content {
-      background: #ffffff;
-      border: 2px solid var(--neon-blue);
-      border-radius: 14px;
-      width: 100%;
-      max-width: 350px;
-      padding: 16px;
+      background: rgba(255, 255, 255, 0.98); border: 2px solid var(--neon-blue); border-radius: 14px; width: 100%; max-width: 360px; padding: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);
     }
     .modal-header { font-weight: 800; font-size: 0.95rem; margin-bottom: 10px; color: var(--neon-blue); }
-    .modal-body label { display: block; font-size: 0.72rem; color: var(--text-gray); margin-top: 6px; font-weight: 600; }
+    .modal-body label { display: block; font-size: 0.72rem; color: var(--text-gray); margin-top: 8px; font-weight: 600; }
     .modal-body input {
-      width: 100%;
-      padding: 7px;
-      background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      color: var(--text-dark);
-      font-size: 0.8rem;
-      margin-top: 3px;
+      width: 100%; padding: 7px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; color: var(--text-dark); font-size: 0.8rem; margin-top: 3px;
     }
+    .driver-phone-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
     .stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0; font-size: 0.78rem; }
-    .btn-wsp {
-      background: var(--neon-green);
-      color: #ffffff;
-      border: none;
-      width: 100%;
-      padding: 9px;
-      border-radius: 8px;
-      font-weight: 800;
-      margin-top: 12px;
-      cursor: pointer;
-    }
-    .btn-close {
-      background: #e2e8f0;
-      color: var(--text-dark);
-      border: none;
-      width: 100%;
-      padding: 7px;
-      border-radius: 8px;
-      margin-top: 8px;
-      cursor: pointer;
-      font-weight: 700;
-    }
+    
+    .btn-wsp { background: var(--neon-green); color: #ffffff; border: none; width: 100%; padding: 9px; border-radius: 8px; font-weight: 800; margin-top: 12px; cursor: pointer; }
+    .btn-close { background: #e2e8f0; color: var(--text-dark); border: none; width: 100%; padding: 7px; border-radius: 8px; margin-top: 8px; cursor: pointer; font-weight: 700; }
 
-    /* Bottom Nav Bar */
     .bottom-nav {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      height: 52px;
-      background: #ffffff;
-      border-top: 1px solid #cbd5e1;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      align-items: center;
-      text-align: center;
+      position: fixed; bottom: 0; left: 0; right: 0; height: 52px; background: rgba(255, 255, 255, 0.95); border-top: 1px solid #cbd5e1; display: grid; grid-template-columns: repeat(3, 1fr); align-items: center; text-align: center; z-index: 100;
     }
     .nav-item { color: var(--text-gray); text-decoration: none; font-size: 0.65rem; font-weight: 700; cursor: pointer; }
     .nav-item.active { color: var(--neon-green); font-weight: 800; }
@@ -340,16 +289,15 @@
 </head>
 <body>
 
-  <!-- Input oculto para cámara o archivos -->
+  <!-- Input de cámara/galería para procesar imágenes con turnos de 12 horas -->
   <input type="file" id="scheduleFileInput" accept="image/*" style="display: none;" onchange="handleScheduleUpload(event)">
 
-  <!-- Cabecera TRANSPORTE LEO -->
   <header>
     <div class="brand-left">
       <div class="brand-logo">🚌</div>
       <div class="brand-title">
         <h1>Transporte <span>LEO</span></h1>
-        <p>Control inteligente de traslados</p>
+        <p>Escáner de Turnos de 12 Hs</p>
       </div>
     </div>
     <div class="brand-right">
@@ -358,38 +306,39 @@
     </div>
   </header>
 
-  <!-- Tarjetas Superiores -->
+  <div class="alert-banner" id="timeAlertBanner" style="display: none;">
+    <span>⏰</span> <span id="timeAlertText">Tenés viajes programados próximamente.</span>
+  </div>
+
   <section class="top-cards">
     <div class="card-btn" onclick="triggerScan()">
       <div class="card-btn-icon">📷</div>
       <div class="card-btn-text">
-        <h3>Cargar Cronograma</h3>
-        <p>Escanear imagen/cámara ></p>
+        <h3>Escanear Cronograma</h3>
+        <p>Cargar imagen de turnos ></p>
       </div>
     </div>
     <div class="card-date">
       <div class="card-date-icon">📅</div>
       <div class="card-date-text">
-        <span>Fecha del Cronograma</span>
-        <strong id="currentDateDisplay">05/11/2026</strong>
+        <span>Fecha de Planilla</span>
+        <input type="date" id="datePicker" onchange="changeDate()">
       </div>
     </div>
   </section>
 
-  <!-- Acciones Rápidas -->
   <section class="quick-nav">
-    <button class="btn-quick" onclick="openDriverModal()">🚘 Choferes (3)</button>
+    <button class="btn-quick" onclick="openDriverModal()">🚘 Choferes & WhatsApp</button>
     <button class="btn-quick" onclick="openStatsModal()">📊 Estadísticas</button>
     <button class="btn-quick" onclick="shareGeneralSummary()">🔗 Compartir General</button>
   </section>
 
-  <!-- Encabezado con Filtro por Chofer y Botón WhatsApp -->
   <div class="schedule-banner">
     <div class="banner-top">
-      <div class="banner-title">📋 Cronograma de Traslados</div>
+      <div class="banner-title">📋 Planilla de Personal Fijo</div>
       <div class="filter-box">
         <span>🔍 Ver:</span>
-        <select class="select-filter" id="driverFilter" onchange="filterByDriver()">
+        <select class="select-filter" id="driverFilter" onchange="applyFilters()">
           <option value="ALL">Todos los Choferes</option>
           <option value="Franco Gramet">Franco Gramet</option>
           <option value="Maximiliano Carraro">Maximiliano Carraro</option>
@@ -397,150 +346,30 @@
         </select>
       </div>
     </div>
-    <button class="btn-share-driver" onclick="shareDriverWhatsApp()">💬 Enviar Resumen al Chofer Seleccionado (WhatsApp)</button>
+
+    <div class="time-filter-toggle">
+      <button class="btn-toggle-time active" id="btnFilterAll" onclick="setTimeFilter('ALL')">📅 Todos los turnos</button>
+      <button class="btn-toggle-time" id="btnFilterUpcoming" onclick="setTimeFilter('UPCOMING')">⏳ Solo Próximos Viajes</button>
+    </div>
+
+    <button class="btn-share-driver" onclick="shareDriverWhatsApp()">💬 Enviar Resumen Directo al Chofer (WhatsApp)</button>
   </div>
 
-  <!-- Contenedor Principal Agrupado por Horarios -->
+  <!-- Contenedor donde la app llena los bloques de turnos (6 a 6, 7 a 7, etc.) -->
   <main class="schedule-container" id="scheduleContainer">
-
-    <!-- BLOQUE 07:00 HS -->
-    <div class="time-group-card" data-hour="07:00">
-      <div class="time-group-header">
-        <div class="time-title">⏰ Horario 07:00 hs</div>
-        <div class="time-count">2 traslados</div>
-      </div>
-      <table class="table-main">
-        <thead>
-          <tr>
-            <th style="width: 12%;">Turno</th>
-            <th style="width: 42%;">Pasajero</th>
-            <th style="width: 20%;">Movimiento</th>
-            <th style="width: 26%;">Chofer Asignado</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr id="row-1" class="is-unassigned" data-time="07:00">
-            <td><span class="badge-shift shift-m">M</span></td>
-            <td><span class="passenger-name" onclick="openPassengerModal('Maximiliano Carraro', 'Av. Jauretche 1420', '3534000001')">Maximiliano Carraro</span></td>
-            <td><span class="badge-mov mov-entra">↑ Entra</span></td>
-            <td>
-              <select class="select-driver" onchange="assignDriver(this, 'row-1')">
-                <option value="">-- Sin Asignar --</option>
-                <option value="Franco Gramet">Franco Gramet</option>
-                <option value="Maximiliano Carraro">Maximiliano Carraro</option>
-                <option value="Emiliano Freytas">Emiliano Freytas</option>
-              </select>
-            </td>
-          </tr>
-          <tr id="row-2" class="is-unassigned" data-time="07:00">
-            <td><span class="badge-shift shift-m">M</span></td>
-            <td><span class="passenger-name" onclick="openPassengerModal('Freytas Emiliano', 'Calle Belgrano 450', '3534000002')">Freytas Emiliano</span></td>
-            <td><span class="badge-mov mov-sale">↓ Sale</span></td>
-            <td>
-              <select class="select-driver" onchange="assignDriver(this, 'row-2')">
-                <option value="">-- Sin Asignar --</option>
-                <option value="Franco Gramet">Franco Gramet</option>
-                <option value="Maximiliano Carraro">Maximiliano Carraro</option>
-                <option value="Emiliano Freytas">Emiliano Freytas</option>
-              </select>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- BLOQUE 15:00 HS -->
-    <div class="time-group-card" data-hour="15:00">
-      <div class="time-group-header">
-        <div class="time-title">⏰ Horario 15:00 hs</div>
-        <div class="time-count">2 traslados</div>
-      </div>
-      <table class="table-main">
-        <thead>
-          <tr>
-            <th style="width: 12%;">Turno</th>
-            <th style="width: 42%;">Pasajero</th>
-            <th style="width: 20%;">Movimiento</th>
-            <th style="width: 26%;">Chofer Asignado</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr id="row-3" class="is-assigned" data-time="15:00">
-            <td><span class="badge-shift shift-t">T</span></td>
-            <td><span class="passenger-name" onclick="openPassengerModal('Vita Sebastian', 'San Martín 890', '3534000003')">Vita Sebastian</span></td>
-            <td><span class="badge-mov mov-entra">↑ Entra</span></td>
-            <td>
-              <select class="select-driver" onchange="assignDriver(this, 'row-3')">
-                <option value="">-- Sin Asignar --</option>
-                <option value="Franco Gramet">Franco Gramet</option>
-                <option value="Maximiliano Carraro" selected>Maximiliano Carraro</option>
-                <option value="Emiliano Freytas">Emiliano Freytas</option>
-              </select>
-            </td>
-          </tr>
-          <tr id="row-4" class="is-unassigned" data-time="15:00">
-            <td><span class="badge-shift shift-t">T</span></td>
-            <td><span class="passenger-name" onclick="openPassengerModal('Maximiliano Schiller', 'Bv. Italia 310', '3534000004')">Maximiliano Schiller</span></td>
-            <td><span class="badge-mov mov-sale">↓ Sale</span></td>
-            <td>
-              <select class="select-driver" onchange="assignDriver(this, 'row-4')">
-                <option value="">-- Sin Asignar --</option>
-                <option value="Franco Gramet">Franco Gramet</option>
-                <option value="Maximiliano Carraro">Maximiliano Carraro</option>
-                <option value="Emiliano Freytas">Emiliano Freytas</option>
-              </select>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- BLOQUE 23:00 HS -->
-    <div class="time-group-card" data-hour="23:00">
-      <div class="time-group-header">
-        <div class="time-title">⏰ Horario 23:00 hs</div>
-        <div class="time-count">1 traslado</div>
-      </div>
-      <table class="table-main">
-        <thead>
-          <tr>
-            <th style="width: 12%;">Turno</th>
-            <th style="width: 42%;">Pasajero</th>
-            <th style="width: 20%;">Movimiento</th>
-            <th style="width: 26%;">Chofer Asignado</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr id="row-5" class="is-assigned" data-time="23:00">
-            <td><span class="badge-shift shift-n">N</span></td>
-            <td><span class="passenger-name" onclick="openPassengerModal('Gonzalez Diego', 'Alvear 120', '3534000005')">Gonzalez Diego</span></td>
-            <td><span class="badge-mov mov-entra">↑ Entra</span></td>
-            <td>
-              <select class="select-driver" onchange="assignDriver(this, 'row-5')">
-                <option value="">-- Sin Asignar --</option>
-                <option value="Franco Gramet" selected>Franco Gramet</option>
-                <option value="Maximiliano Carraro">Maximiliano Carraro</option>
-                <option value="Emiliano Freytas">Emiliano Freytas</option>
-              </select>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
+    <!-- Se llena dinámicamente o con base inicial -->
   </main>
 
-  <!-- Botones de Exportación -->
   <section class="export-deck">
     <button class="btn-exp exp-view" onclick="prepareCleanView()">📱 Vista Captura</button>
     <button class="btn-exp exp-excel" onclick="exportExcel()">📊 Exportar CSV</button>
     <button class="btn-exp exp-print" onclick="window.print()">🖨️ Imprimir</button>
   </section>
 
-  <!-- Modal Ficha Pasajero -->
+  <!-- Modales -->
   <div class="modal-overlay" id="passengerModal">
     <div class="modal-content">
-      <div class="modal-header">👤 Ficha de Pasajero</div>
+      <div class="modal-header">👤 Ficha de Pasajero Fijo</div>
       <div class="modal-body">
         <label>Nombre:</label>
         <input type="text" id="modalPassName" readonly>
@@ -548,269 +377,122 @@
         <input type="text" id="modalPassAddr">
         <label>Teléfono:</label>
         <input type="text" id="modalPassPhone">
-        <button class="btn-wsp" onclick="sendWhatsAppPassenger()">💬 Enviar WhatsApp Directo</button>
+        <button class="btn-wsp" onclick="sendWhatsAppPassenger()">💬 Contactar por WhatsApp</button>
       </div>
       <button class="btn-close" onclick="closeModal('passengerModal')">Cerrar</button>
     </div>
   </div>
 
-  <!-- Modal Estadísticas -->
   <div class="modal-overlay" id="statsModal">
     <div class="modal-content">
       <div class="modal-header">📊 Estadísticas del Día</div>
-      <div class="modal-body" id="statsBody">
-        <!-- Generado dinámicamente -->
-      </div>
+      <div class="modal-body" id="statsBody"></div>
       <button class="btn-close" onclick="closeModal('statsModal')">Cerrar</button>
     </div>
   </div>
 
-  <!-- Modal Gestor de Choferes -->
   <div class="modal-overlay" id="driverModal">
     <div class="modal-content">
-      <div class="modal-header">🚘 Modificar Choferes</div>
+      <div class="modal-header">🚘 Choferes y Teléfonos WhatsApp</div>
       <div class="modal-body">
-        <label>Chofer 1:</label>
-        <input type="text" id="d1" value="Franco Gramet">
-        <label>Chofer 2:</label>
-        <input type="text" id="d2" value="Maximiliano Carraro">
-        <label>Chofer 3:</label>
-        <input type="text" id="d3" value="Emiliano Freytas">
+        <label>Chofer 1 / Teléfono:</label>
+        <div class="driver-phone-row">
+          <input type="text" id="d1_name" value="Franco Gramet">
+          <input type="text" id="d1_phone" value="3534000001">
+        </div>
+        <label>Chofer 2 / Teléfono:</label>
+        <div class="driver-phone-row">
+          <input type="text" id="d2_name" value="Maximiliano Carraro">
+          <input type="text" id="d2_phone" value="3534000002">
+        </div>
+        <label>Chofer 3 / Teléfono:</label>
+        <div class="driver-phone-row">
+          <input type="text" id="d3_name" value="Emiliano Freytas">
+          <input type="text" id="d3_phone" value="3534000003">
+        </div>
       </div>
-      <button class="btn-close" onclick="saveDrivers()">Guardar Cambios</button>
+      <button class="btn-wsp" onclick="saveDriversAndPhones()">Guardar Configuración</button>
+      <button class="btn-close" onclick="closeModal('driverModal')">Cancelar</button>
     </div>
   </div>
 
-  <!-- Navegación Inferior -->
   <nav class="bottom-nav">
-    <a class="nav-item active" onclick="filterByDriver('ALL')"><span class="nav-icon">🏠</span>Todos</a>
+    <a class="nav-item active" onclick="setTimeFilter('ALL')"><span class="nav-icon">🏠</span>Todos</a>
     <a class="nav-item" onclick="openStatsModal()"><span class="nav-icon">📊</span>Estadísticas</a>
     <a class="nav-item" onclick="openDriverModal()"><span class="nav-icon">⚙️</span>Choferes</a>
   </nav>
 
   <script>
+    let activeTimeFilter = 'ALL'; 
+    let driverPhones = {
+      "Franco Gramet": "3534000001",
+      "Maximiliano Carraro": "3534000002",
+      "Emiliano Freytas": "3534000003"
+    };
+
+    // Datos base de turnos fijos (Ej: turnos de 12 horas: 06:00, 07:00, 19:00, etc.)
+    let defaultScheduleData = [
+      { time: "06:00", shift: "M", passenger: "Maximiliano Carraro", addr: "Av. Jauretche 1420", phone: "3534000001", mov: "↑ Entra (Turno 6 a 6)" },
+      { time: "06:00", shift: "M", passenger: "Freytas Emiliano", addr: "Calle Belgrano 450", phone: "3534000002", mov: "↓ Sale (Turno 6 a 6)" },
+      { time: "07:00", shift: "M", passenger: "Vita Sebastian", addr: "San Martín 890", phone: "3534000003", mov: "↑ Entra (Turno 7 a 7)" },
+      { time: "19:00", shift: "N", passenger: "Maximiliano Schiller", addr: "Bv. Italia 310", phone: "3534000004", mov: "↑ Entra (Turno 12hs)" },
+      { time: "19:00", shift: "N", passenger: "Gonzalez Diego", addr: "Alvear 120", phone: "3534000005", mov: "↓ Sale (Turno 12hs)" }
+    ];
+
     document.addEventListener('DOMContentLoaded', () => {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('datePicker').value = today;
+      loadDriverPhones();
+      renderSchedule(defaultScheduleData);
       loadState();
       updateRowStyles();
+      checkUpcomingAlerts();
+      setInterval(checkUpcomingAlerts, 60000);
     });
 
-    function saveState() {
-      const assignments = {};
-      document.querySelectorAll('.table-main tbody tr').forEach(row => {
-        const id = row.id;
-        const driver = row.querySelector('.select-driver').value;
-        assignments[id] = driver;
-      });
-      localStorage.setItem('leo_assignments', JSON.stringify(assignments));
-    }
+    function renderSchedule(data) {
+      const container = document.getElementById('scheduleContainer');
+      container.innerHTML = '';
 
-    function loadState() {
-      const saved = localStorage.getItem('leo_assignments');
-      if (saved) {
-        const assignments = JSON.parse(saved);
-        for (let id in assignments) {
-          const row = document.getElementById(id);
-          if (row) {
-            const select = row.querySelector('.select-driver');
-            select.value = assignments[id];
-          }
-        }
-      }
-      updateRowStyles();
-    }
-
-    function updateRowStyles() {
-      document.querySelectorAll('.table-main tbody tr').forEach(row => {
-        const select = row.querySelector('.select-driver');
-        if (select.value !== "") {
-          row.classList.add('is-assigned');
-          row.classList.remove('is-unassigned');
-        } else {
-          row.classList.remove('is-assigned');
-          row.classList.add('is-unassigned');
-        }
-      });
-    }
-
-    function assignDriver(selectElem, rowId) {
-      updateRowStyles();
-      saveState();
-      filterByDriver();
-    }
-
-    function filterByDriver() {
-      const filterValue = document.getElementById('driverFilter').value;
-      const rows = document.querySelectorAll('.table-main tbody tr');
-      
-      rows.forEach(row => {
-        const select = row.querySelector('.select-driver');
-        if (filterValue === 'ALL' || select.value === filterValue) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
-      });
-    }
-
-    function triggerScan() {
-      document.getElementById('scheduleFileInput').click();
-    }
-
-    // Lector dinámico para procesar cualquier imagen de cronograma
-    function handleScheduleUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        alert("📷 Imagen recibida: " + file.name + "\n\nEscaneando cronograma y filtrando traslados...");
-        
-        setTimeout(() => {
-          updateRowStyles();
-          alert("✅ Cronograma de Transporte LEO procesado y actualizado correctamente.");
-        }, 500);
-      }
-    }
-
-    function shareDriverWhatsApp() {
-      const driver = document.getElementById('driverFilter').value;
-      if (driver === 'ALL') {
-        alert("Por favor, seleccioná un chofer específico en el filtro superior para generar su resumen.");
-        return;
-      }
-
-      let text = `🚌 *TRANSPORTE LEO - Cronograma de Traslados*\nChofer: *${driver}*\nFecha: 05/11/2026\n\n`;
-      let count = 0;
-
-      const rows = document.querySelectorAll('.table-main tbody tr');
-      rows.forEach(row => {
-        const select = row.querySelector('.select-driver');
-        if (select.value === driver) {
-          count++;
-          const time = row.getAttribute('data-time');
-          const passenger = row.querySelector('.passenger-name').innerText;
-          const mov = row.querySelector('.badge-mov').innerText;
-          text += `⏰ *${time} hs* | ${passenger} (${mov})\n`;
-        }
+      // Agrupar por horario
+      let grouped = {};
+      data.forEach((item, index) => {
+        if (!grouped[item.time]) grouped[item.time] = [];
+        grouped[item.time].push({ ...item, id: `row-${index + 1}` });
       });
 
-      if (count === 0) {
-        alert(`El chofer ${driver} no tiene traslados asignados.`);
-        return;
-      }
+      for (let time in grouped) {
+        let items = grouped[time];
+        let cardHtml = `
+          <div class="time-group-card" data-hour="${time}">
+            <div class="time-group-header">
+              <div class="time-title">⏰ Turno / Horario ${time} hs</div>
+              <div class="time-count">${items.length} traslados</div>
+            </div>
+            <table class="table-main">
+              <thead>
+                <tr>
+                  <th style="width: 12%;">Turno</th>
+                  <th style="width: 42%;">Pasajero Fijo</th>
+                  <th style="width: 20%;">Movimiento</th>
+                  <th style="width: 26%;">Chofer Asignado</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
 
-      text += `\nTotal de traslados asignados: ${count}\n_Transporte LEO: Puntualidad y confianza_`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-    }
-
-    function shareGeneralSummary() {
-      let text = `📋 *TRANSPORTE LEO - Resumen General*\nFecha: 05/11/2026\n\n`;
-      const rows = document.querySelectorAll('.table-main tbody tr');
-      let assigned = 0, unassigned = 0;
-
-      rows.forEach(row => {
-        const select = row.querySelector('.select-driver');
-        if (select.value !== "") assigned++;
-        else unassigned++;
-      });
-
-      text += `✅ Asignados: ${assigned}\n⚠️ Sin asignar (tachados): ${unassigned}\nTotal de viajes: ${assigned + unassigned}\n\n_Transporte LEO: Puntualidad y confianza_`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-    }
-
-    function openStatsModal() {
-      const rows = document.querySelectorAll('.table-main tbody tr');
-      let total = rows.length;
-      let assigned = 0;
-      let byDriver = {};
-
-      rows.forEach(row => {
-        const select = row.querySelector('.select-driver');
-        if (select.value !== "") {
-          assigned++;
-          byDriver[select.value] = (byDriver[select.value] || 0) + 1;
-        }
-      });
-
-      let html = `
-        <div class="stat-row"><strong>Total de Traslados:</strong> <span>${total}</span></div>
-        <div class="stat-row"><strong>Asignados:</strong> <span style="color:var(--neon-green); font-weight:800;">${assigned}</span></div>
-        <div class="stat-row"><strong>Sin Asignar (Tachados):</strong> <span style="color:var(--neon-red); font-weight:800;">${total - assigned}</span></div>
-        <h4 style="margin-top:10px; font-size:0.8rem; color:var(--neon-blue);">Desglose por Chofer:</h4>
-      `;
-
-      for (let driver in byDriver) {
-        html += `<div class="stat-row"><span>${driver}</span>: <strong>${byDriver[driver]} viajes</strong></div>`;
-      }
-
-      document.getElementById('statsBody').innerHTML = html;
-      document.getElementById('statsModal').style.display = 'flex';
-    }
-
-    function prepareCleanView() {
-      window.scrollTo(0, 0);
-      alert("Vista limpia lista para captura de pantalla.");
-    }
-
-    function exportExcel() {
-      let csv = "Turno,Pasajero,Movimiento,Chofer\n";
-      const rows = document.querySelectorAll('.table-main tbody tr');
-      rows.forEach(row => {
-        const cols = row.querySelectorAll('td');
-        const shift = cols[0].innerText.trim();
-        const passenger = cols[1].innerText.trim();
-        const mov = cols[2].innerText.trim();
-        const driver = cols[3].querySelector('select').value || "Sin Asignar";
-        csv += `"${shift}","${passenger}","${mov}","${driver}"\n`;
-      });
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'cronograma_transporte_leo.csv';
-      a.click();
-    }
-
-    function openPassengerModal(name, addr, phone) {
-      document.getElementById('modalPassName').value = name;
-      document.getElementById('modalPassAddr').value = addr;
-      document.getElementById('modalPassPhone').value = phone;
-      document.getElementById('passengerModal').style.display = 'flex';
-    }
-
-    function sendWhatsAppPassenger() {
-      const phone = document.getElementById('modalPassPhone').value;
-      const name = document.getElementById('modalPassName').value;
-      const text = encodeURIComponent(`Hola ${name}, te contactamos desde Transporte LEO para confirmar tu traslado.`);
-      window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
-    }
-
-    function openDriverModal() {
-      document.getElementById('driverModal').style.display = 'flex';
-    }
-
-    function saveDrivers() {
-      const d1 = document.getElementById('d1').value;
-      const d2 = document.getElementById('d2').value;
-      const d3 = document.getElementById('d3').value;
-      
-      const selects = document.querySelectorAll('.select-driver');
-      selects.forEach(select => {
-        const currentVal = select.value;
-        select.options[1].text = d1; select.options[1].value = d1;
-        select.options[2].text = d2; select.options[2].value = d2;
-        select.options[3].text = d3; select.options[3].value = d3;
-        select.value = currentVal;
-      });
-
-      const filterSelect = document.getElementById('driverFilter');
-      filterSelect.options[1].text = d1; filterSelect.options[1].value = d1;
-      filterSelect.options[2].text = d2; filterSelect.options[2].value = d2;
-      filterSelect.options[3].text = d3; filterSelect.options[3].value = d3;
-
-      closeModal('driverModal');
-    }
-
-    function closeModal(id) {
-      document.getElementById(id).style.display = 'none';
-    }
-  </script>
-</body>
-</html>
+        items.forEach(item => {
+          let shiftClass = item.shift === 'M' ? 'shift-m' : (item.shift === 'T' ? 'shift-t' : 'shift-n');
+          let movClass = item.mov.includes('Entra') ? 'mov-entra' : 'mov-sale';
+          
+          cardHtml += `
+            <tr id="${item.id}" class="is-unassigned" data-time="${item.time}">
+              <td><span class="badge-shift ${shiftClass}">${item.shift}</span></td>
+              <td><span class="passenger-name" onclick="openPassengerModal('${item.passenger}', '${item.addr}', '${item.phone}')">${item.passenger}</span></td>
+              <td><span class="badge-mov ${movClass}">${item.mov}</span></td>
+              <td>
+                <select class="select-driver" onchange="assignDriver(this, '${item.id}')">
+                  <option value="">-- Sin Asignar --</option>
+                  <option value="${Object.keys(driverPhones)[0]}">${Object.keys(driverPhones)[0]}</option>
+                  <option value="${Object.keys(driverPhones)[1]}">${Object.keys(driverPhones)[1]}</option>
+                  <opti
