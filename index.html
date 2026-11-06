@@ -263,7 +263,7 @@
       <div class="brand-logo">🚌</div>
       <div class="brand-title">
         <h1>Transporte <span>LEO</span></h1>
-        <p>Escáner Inteligente con Filtro de Horarios</p>
+        <p>Escáner Inteligente por Rangos Horarios</p>
       </div>
     </div>
     <div class="brand-right">
@@ -277,7 +277,7 @@
       <div class="card-btn-icon">📷</div>
       <div class="card-btn-text">
         <h3>Escanear Cronograma</h3>
-        <p>Solo cuadrantes con horario ></p>
+        <p>Detectar rangos (ej: 6-18) ></p>
       </div>
     </div>
     <div class="card-date">
@@ -630,26 +630,48 @@
     function handleScheduleUpload(event) {
       const file = event.target.files[0];
       if (file) {
-        alert("📷 Escaneando imagen y filtrando únicamente los cuadrantes con horario de entrada o salida (ignorando casilleros vacíos y colores)...");
+        alert("📷 Procesando imagen: analizando nombres a la izquierda y descartando cuadrantes con letras solas (M, T, N). Extrayendo únicamente rangos horarios (ej: 6-18)...");
+        
         Tesseract.recognize(file, 'spa').then(({ data: { text } }) => {
           let lines = text.split('\n');
           let parsed = [];
 
           lines.forEach(line => {
             let l = line.trim();
-            // REGLA CLAVE: Solo procesar la línea si realmente contiene un horario detectado (HH:MM)
-            let timeMatch = l.match(/\d{2}:\d{2}/);
-            if (l.length > 2 && timeMatch) {
-              let extractedTime = timeMatch[0];
+
+            // EXPRESIÓN REGULAR PARA RANGOS HORARIOS COMO 6-18, 7-19, 6-15, 06:00-18:00
+            let rangeMatch = l.match(/(\d{1,2})\s*[-–/]\s*(\d{1,2})/);
+
+            if (l.length > 2 && rangeMatch) {
+              let startHour = parseInt(rangeMatch[1]);
+              let endHour = parseInt(rangeMatch[2]);
+
+              let formattedStartTime = (startHour < 10 ? '0' + startHour : startHour) + ':00';
+              let formattedEndTime = (endHour < 10 ? '0' + endHour : endHour) + ':00';
+
               let isMartina = l.toLowerCase().includes('martina');
 
+              // Asignar nombre extraído de la izquierda o pasaje detectado
+              let passName = isMartina ? "Martina" : l.replace(/(\d{1,2})\s*[-–/]\s*(\d{1,2})/, '').trim().slice(0, 22) || "Pasajero Detectado";
+
+              // Agregar Viaje de Entrada (Hora Inicio)
               parsed.push({
-                time: extractedTime,
-                shift: parseInt(extractedTime.split(':')[0]) >= 18 ? 'N' : (parseInt(extractedTime.split(':')[0]) >= 12 ? 'T' : 'M'),
-                passenger: isMartina ? "Martina" : l.replace(/\d{2}:\d{2}/, '').trim().slice(0, 22) || "Pasajero Escaneado",
-                addr: "Detectado por OCR",
+                time: formattedStartTime,
+                shift: startHour >= 18 ? 'N' : (startHour >= 12 ? 'T' : 'M'),
+                passenger: passName,
+                addr: "Fijo Escaneado",
                 phone: "",
-                mov: parseInt(extractedTime.split(':')[0]) < 12 ? "↑ Entra" : "↓ Sale"
+                mov: "↑ Entra"
+              });
+
+              // Agregar Viaje de Salida (Hora Fin)
+              parsed.push({
+                time: formattedEndTime,
+                shift: endHour >= 18 ? 'N' : (endHour >= 12 ? 'T' : 'M'),
+                passenger: passName,
+                addr: "Fijo Escaneado",
+                phone: "",
+                mov: "↓ Sale"
               });
             }
           });
@@ -658,14 +680,14 @@
           if (parsed.length > 0) {
             schedulesByDate[dateKey] = parsed;
           } else {
-            alert("⚠️ No se detectaron horarios válidos en la imagen. Verificá que los cuadrantes tengan horarios escritos.");
+            alert("⚠️ No se encontraron cuadrantes con rangos de horarios (ej: 6-18, 7-19). Se omitieron los cuadrantes vacíos o con letras sueltas.");
             schedulesByDate[dateKey] = getDefaultSchedule();
           }
           saveCurrentDateData();
           renderSchedule(schedulesByDate[dateKey]);
-          alert(`✅ Planilla escaneada con éxito para la fecha: ${dateKey}`);
+          alert(`✅ Planilla escaneada correctamente para la fecha: ${dateKey}`);
         }).catch(() => {
-          alert("⚠️ Error al procesar la imagen con OCR.");
+          alert("⚠️ Error al escanear la imagen. Verificá que la foto sea clara.");
         });
       }
     }
