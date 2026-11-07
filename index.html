@@ -393,12 +393,7 @@
       "Emiliano Freytas": "2657223120"
     };
 
-    let schedulesByDate = {};
-    const defaultDateKey = "2026-11-07";
-
-    function getSelectedDate() {
-      return defaultDateKey;
-    }
+    let currentScheduleData = [];
 
     function getDefaultSchedule() {
       return [
@@ -412,27 +407,18 @@
 
     document.addEventListener('DOMContentLoaded', () => {
       loadDriverPhones();
-      loadDataForCurrentDate();
+      const saved = localStorage.getItem('leo_active_schedule');
+      if (saved) {
+        currentScheduleData = JSON.parse(saved);
+      } else {
+        currentScheduleData = getDefaultSchedule();
+      }
+      renderSchedule(currentScheduleData);
       updateDriverFilterSelect();
     });
 
-    function loadDataForCurrentDate() {
-      const dateKey = getSelectedDate();
-      if (!schedulesByDate[dateKey]) {
-        const savedDateData = localStorage.getItem(`leo_schedule_${dateKey}`);
-        if (savedDateData) {
-          schedulesByDate[dateKey] = JSON.parse(savedDateData);
-        } else {
-          schedulesByDate[dateKey] = getDefaultSchedule();
-        }
-      }
-      renderSchedule(schedulesByDate[dateKey]);
-      loadState();
-    }
-
-    function saveCurrentDateData() {
-      const dateKey = getSelectedDate();
-      localStorage.setItem(`leo_schedule_${dateKey}`, JSON.stringify(schedulesByDate[dateKey]));
+    function saveActiveSchedule() {
+      localStorage.setItem('leo_active_schedule', JSON.stringify(currentScheduleData));
     }
 
     function updateDriverFilterSelect() {
@@ -567,17 +553,15 @@
     }
 
     function saveState() {
-      const selectedDate = getSelectedDate();
       const assignments = {};
       document.querySelectorAll('.table-main tbody tr').forEach(row => {
         assignments[row.id] = row.querySelector('.select-driver').value;
       });
-      localStorage.setItem(`leo_assignments_${selectedDate}`, JSON.stringify(assignments));
+      localStorage.setItem('leo_assignments_active', JSON.stringify(assignments));
     }
 
     function loadState() {
-      const selectedDate = getSelectedDate();
-      const saved = localStorage.getItem(`leo_assignments_${selectedDate}`);
+      const saved = localStorage.getItem('leo_assignments_active');
       
       document.querySelectorAll('.select-driver').forEach(s => {
         if (!s.disabled) s.value = "";
@@ -602,7 +586,7 @@
       const file = event.target.files[0];
       if (!file) return;
 
-      alert("📷 Analizando imagen con motor OCR optimizado...");
+      alert("📷 Analizando imagen con motor OCR... Por favor aguardá unos segundos.");
 
       const reader = new FileReader();
       reader.onload = function(e) {
@@ -652,7 +636,7 @@
                     time: startStr,
                     shift: startH >= 18 ? 'N' : (startH >= 12 ? 'T' : 'M'),
                     passenger: passFinal,
-                    addr: "OCR Columna",
+                    addr: "OCR Escaneado",
                     phone: "",
                     mov: "↑ Entra"
                   });
@@ -661,7 +645,7 @@
                     time: endStr,
                     shift: endH >= 18 ? 'N' : (endH >= 12 ? 'T' : 'M'),
                     passenger: passFinal,
-                    addr: "OCR Columna",
+                    addr: "OCR Escaneado",
                     phone: "",
                     mov: "↓ Sale"
                   });
@@ -671,17 +655,16 @@
               }
             });
 
-            const activeDateKey = getSelectedDate();
             if (parsed.length > 0) {
-              schedulesByDate[activeDateKey] = parsed;
+              currentScheduleData = parsed;
             } else {
-              alert("⚠️ No se detectaron rangos horarios claros. Se cargó la base por defecto.");
-              schedulesByDate[activeDateKey] = getDefaultSchedule();
+              alert("⚠️ No se detectaron rangos horarios claros. Se mantuvo la lista anterior.");
+              return;
             }
 
-            saveCurrentDateData();
-            renderSchedule(schedulesByDate[activeDateKey]);
-            alert("✅ ¡Escaneo OCR finalizado con éxito!");
+            saveActiveSchedule();
+            renderSchedule(currentScheduleData);
+            alert("✅ ¡Escaneo OCR finalizado con éxito y cargado en pantalla!");
           }).catch(err => {
             alert("⚠️ Error en el motor OCR: " + err.message);
           });
@@ -699,9 +682,7 @@
       }
 
       const phone = driverPhones[driver] || "";
-      const selectedDate = getSelectedDate();
-
-      let text = `🚌 *TRANSPORTE LEO*\nChofer: *${driver}*\nFecha: ${selectedDate}\n\n`;
+      let text = `🚌 *TRANSPORTE LEO*\nChofer: *${driver}*\n\n`;
       let count = 0;
 
       document.querySelectorAll('.time-group-card').forEach(group => {
@@ -720,7 +701,7 @@
       });
 
       if (count === 0) {
-        alert(`El chofer ${driver} no tiene traslados asignados para esta fecha.`);
+        alert(`El chofer ${driver} no tiene traslados asignados.`);
         return;
       }
 
@@ -740,19 +721,15 @@
 
       if (!pass) { alert("Por favor ingresá el nombre del pasajero."); return; }
 
-      const dateKey = getSelectedDate();
-      if (!schedulesByDate[dateKey]) schedulesByDate[dateKey] = getDefaultSchedule();
-
-      schedulesByDate[dateKey].push({ time, shift, passenger: pass, addr, phone, mov });
-      saveCurrentDateData();
-      renderSchedule(schedulesByDate[dateKey]);
+      currentScheduleData.push({ time, shift, passenger: pass, addr, phone, mov });
+      saveActiveSchedule();
+      renderSchedule(currentScheduleData);
       closeModal('specialTripModal');
-      alert("✅ Viaje especial agregado a la fecha seleccionada.");
+      alert("✅ Viaje especial agregado.");
     }
 
     function generateSimpleImage() {
-      const dateKey = getSelectedDate();
-      document.getElementById('simpleHeaderTitle').innerText = `TRANSPORTE LEO - ${dateKey}`;
+      document.getElementById('simpleHeaderTitle').innerText = `TRANSPORTE LEO - RESUMEN`;
       const listContainer = document.getElementById('simpleList');
       listContainer.innerHTML = '';
 
@@ -797,7 +774,7 @@
       localStorage.setItem('leo_driver_phones', JSON.stringify(driverPhones));
       closeModal('driverModal');
       updateDriverFilterSelect();
-      renderSchedule(schedulesByDate[getSelectedDate()]);
+      renderSchedule(currentScheduleData);
     }
 
     function loadDriverPhones() {
@@ -822,17 +799,16 @@
 
     function prepareCleanView() { window.scrollTo(0, 0); alert("Vista limpia activada."); }
     function exportExcel() {
-      let csv = "Fecha,Horario,Turno,Pasajero,Movimiento,Chofer\n";
-      const dateKey = getSelectedDate();
+      let csv = "Horario,Turno,Pasajero,Movimiento,Chofer\n";
       document.querySelectorAll('.table-main tbody tr').forEach(row => {
         if (row.style.display !== 'none') {
           const cols = row.querySelectorAll('td');
-          csv += `"${dateKey}","${row.getAttribute('data-time')}","${cols[0].innerText}","${cols[1].innerText}","${cols[2].innerText}","${cols[3].querySelector('select').value || 'Sin Asignar'}"\n`;
+          csv += `"${row.getAttribute('data-time')}","${cols[0].innerText}","${cols[1].innerText}","${cols[2].innerText}","${cols[3].querySelector('select').value || 'Sin Asignar'}"\n`;
         }
       });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-      a.download = `cronograma_leo_${dateKey}.csv`;
+      a.download = `cronograma_leo.csv`;
       a.click();
     }
 
@@ -845,11 +821,6 @@
 
     function sendWhatsAppPassenger() {
       window.open(`https://wa.me/${document.getElementById('modalPassPhone').value}?text=${encodeURIComponent("Hola, te contactamos desde Transporte LEO para confirmar tu traslado.")}`, '_blank');
-    }
-
-    function changeDate() { 
-      loadDataForCurrentDate();
-      applyFilters(); 
     }
 
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
