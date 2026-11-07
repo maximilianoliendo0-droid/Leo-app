@@ -46,43 +46,22 @@
     .brand-tag { font-weight: 900; font-size: 1rem; color: var(--text-dark); line-height: 1; }
     .brand-slogan { font-size: 0.6rem; color: var(--neon-green); display: block; font-weight: 700; }
 
-    .top-cards { padding: 8px 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .top-cards { padding: 8px 10px; display: block; }
     .card-btn {
       background: rgba(240, 249, 255, 0.9);
       border: 1px solid var(--neon-blue);
       border-radius: 12px;
-      padding: 8px;
+      padding: 10px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       cursor: pointer;
       color: var(--neon-blue);
-    }
-    .card-btn-icon { font-size: 1.3rem; }
-    .card-btn-text h3 { font-size: 0.78rem; font-weight: 800; line-height: 1; color: #0369a1; }
-    .card-btn-text p { font-size: 0.6rem; color: #0284c7; margin-top: 2px; }
-
-    .card-date {
-      background: rgba(240, 253, 244, 0.9);
-      border: 1px solid var(--neon-green);
-      border-radius: 12px;
-      padding: 6px 8px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .card-date-icon { font-size: 1.3rem; }
-    .card-date-text span { font-size: 0.58rem; color: var(--text-gray); display: block; }
-    .card-date-text input {
-      background: transparent;
-      border: none;
-      font-size: 0.78rem;
-      font-weight: 800;
-      color: #15803d;
-      outline: none;
-      cursor: pointer;
       width: 100%;
     }
+    .card-btn-icon { font-size: 1.5rem; }
+    .card-btn-text h3 { font-size: 0.85rem; font-weight: 800; line-height: 1; color: #0369a1; }
+    .card-btn-text p { font-size: 0.65rem; color: #0284c7; margin-top: 2px; }
 
     .quick-nav { padding: 0 10px 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .btn-quick {
@@ -280,13 +259,6 @@
         <p>Lectura automática de imagen ></p>
       </div>
     </div>
-    <div class="card-date">
-      <div class="card-date-icon">📅</div>
-      <div class="card-date-text">
-        <span>Fecha de Planilla</span>
-        <input type="date" id="datePicker" onchange="changeDate()">
-      </div>
-    </div>
   </section>
 
   <section class="quick-nav">
@@ -422,9 +394,10 @@
     };
 
     let schedulesByDate = {};
+    const defaultDateKey = "2026-11-07";
 
     function getSelectedDate() {
-      return document.getElementById('datePicker').value;
+      return defaultDateKey;
     }
 
     function getDefaultSchedule() {
@@ -438,8 +411,6 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('datePicker').value = today;
       loadDriverPhones();
       loadDataForCurrentDate();
       updateDriverFilterSelect();
@@ -627,7 +598,6 @@
 
     function triggerScan() { document.getElementById('scheduleFileInput').click(); }
 
-    // MOTOR DE ESCANEO OCR DIRECTO Y FUNCIONAL
     function handleScheduleUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -641,7 +611,6 @@
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           
-          // Escalar imagen para máxima velocidad y precisión del OCR
           let width = img.width;
           let height = img.height;
           const maxDim = 1600;
@@ -658,46 +627,15 @@
           canvas.height = height;
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Procesar con Tesseract
           Tesseract.recognize(canvas.toDataURL('image/jpeg', 0.9), 'spa').then(({ data: { text } }) => {
             let lines = text.split('\n');
             let parsed = [];
-            let detectedDateKey = null;
-
-            const monthsMap = {
-              'enero': '01', 'febrero': '02', 'marzo': '03', 'abril': '04',
-              'mayo': '05', 'junio': '06', 'julio': '07', 'agosto': '08',
-              'septiembre': '09', 'octubre': '10', 'noviembre': '11', 'diciembre': '12'
-            };
-
-            let currentMonth = "11";
-            let currentYear = new Date().getFullYear().toString();
-
-            lines.forEach(l => {
-              let lower = l.toLowerCase();
-              for (let m in monthsMap) {
-                if (lower.includes(m)) {
-                  currentMonth = monthsMap[m];
-                  break;
-                }
-              }
-            });
-
             let currentPassenger = "Pasajero Planilla";
 
             lines.forEach(line => {
               let l = line.trim();
               if (!l) return;
 
-              // Detectar día
-              let dayMatch = l.match(/(?:dia|día)\s*(\d{1,2})/i) || l.match(/^(\d{1,2})$/);
-              if (dayMatch && parseInt(dayMatch[1]) >= 1 && parseInt(dayMatch[1]) <= 31) {
-                let dNum = parseInt(dayMatch[1]);
-                let dFormatted = dNum < 10 ? '0' + dNum : '' + dNum;
-                detectedDateKey = `${currentYear}-${currentMonth}-${dFormatted}`;
-              }
-
-              // Buscar rangos horarios (ej: 6-18, 7-12, 9-15)
               let rangeMatch = l.match(/(\d{1,2})\s*[-–/]\s*(\d{1,2})/);
               if (rangeMatch) {
                 let startH = parseInt(rangeMatch[1]);
@@ -732,10 +670,6 @@
                 currentPassenger = l.slice(0, 22);
               }
             });
-
-            if (detectedDateKey) {
-              document.getElementById('datePicker').value = detectedDateKey;
-            }
 
             const activeDateKey = getSelectedDate();
             if (parsed.length > 0) {
