@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Transporte LEO - Control Inteligente</title>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --bg-main: #f1f5f9;
+      --neon-green: #16a34a;
+      --neon-blue: #0284c7;
+      --neon-purple: #9333ea;
+      --neon-red: #dc2626;
+      --text-dark: #0f172a;
+      --text-gray: #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { 
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); 
+      color: var(--text-dark); 
+      padding-bottom: 75px; 
+      min-height: 100vh;
+    }
+
+    header {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e2e8f0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand-left { display: flex; align-items: center; gap: 8px; }
+    .brand-logo { width: 36px; height: 36px; background: #f0fdf4; border: 2px solid var(--neon-green); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .brand-title h1 { font-size: 1.05rem; font-weight: 800; color: var(--text-dark); line-height: 1; }
+    .brand-title h1 span { color: var(--neon-green); }
+    .brand-title p { font-size: 0.65rem; color: var(--neon-blue); margin-top: 2px; font-weight: 600; }
+    .brand-right { text-align: right; }
+    .brand-tag { font-weight: 900; font-size: 1rem; color: var(--text-dark); line-height: 1; }
+    .brand-slogan { font-size: 0.6rem; color: var(--neon-green); display: block; font-weight: 700; }
+
+    .top-cards { padding: 8px 10px; display: block; }
+    .card-btn {
+      background: rgba(240, 249, 255, 0.9);
+      border: 1px solid var(--neon-blue);
+      border-radius: 12px;
+      padding: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      color: var(--neon-blue);
+      width: 100%;
+    }
+    .card-btn-icon { font-size: 1.5rem; }
+    .card-btn-text h3 { font-size: 0.85rem; font-weight: 800; line-height: 1; color: #0369a1; }
+    .card-btn-text p { font-size: 0.65rem; color: #0284c7; margin-top: 2px; }
+
+    .quick-nav { padding: 0 10px 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .btn-quick {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #cbd5e1;
+      color: var(--text-dark);
+      padding: 6px 2px;
+      border-radius: 8px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }
+    .btn-quick-special {
+      background: #fdf4ff;
+      border: 1.5px solid var(--neon-purple);
+      color: var(--neon-purple);
+      font-weight: 800;
+    }
+
+    .schedule-banner {
+      margin: 0 10px 8px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .banner-top { display: flex; justify-content: space-between; align-items: center; }
+    .banner-title { font-size: 0.78rem; font-weight: 800; color: var(--text-dark); }
+    .filter-box { display: flex; align-items: center; gap: 4px; font-size: 0.7rem; color: var(--neon-blue); font-weight: 700; }
+    .select-filter {
+      background: #ffffff;
+      color: var(--neon-green);
+      border: 1.5px solid var(--neon-green);
+      border-radius: 6px;
+      padding: 3px 6px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      outline: none;
+    }
+
+    .shift-subfilters { display: flex; gap: 4px; margin-top: 4px; }
+    .btn-subfilter {
+      flex: 1;
+      padding: 4px;
+      font-size: 0.65rem;
+      font-weight: 800;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--text-dark);
+      cursor: pointer;
+    }
+    .btn-subfilter.active { background: var(--neon-blue); color: #fff; border-color: var(--neon-blue); }
+
+    .btn-share-driver {
+      background: var(--neon-green);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      width: 100%;
+      margin-top: 2px;
+    }
+
+    .schedule-container { padding: 0 8px; display: flex; flex-direction: column; gap: 12px; }
+
+    .time-group-card {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(203, 213, 225, 0.8);
+      border-left: 4px solid var(--neon-blue);
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    }
+    .time-group-header {
+      background: rgba(241, 245, 249, 0.95);
+      padding: 6px 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #cbd5e1;
+    }
+    .time-title { font-size: 0.82rem; font-weight: 800; color: var(--neon-blue); display: flex; align-items: center; gap: 6px; }
+    .time-count { font-size: 0.62rem; background: #e2e8f0; color: var(--text-dark); padding: 2px 6px; border-radius: 8px; font-weight: 700; }
+
+    .table-main { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .table-main th {
+      background: rgba(248, 250, 252, 0.9);
+      color: var(--text-gray);
+      font-size: 0.63rem;
+      padding: 6px 2px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: center;
+    }
+    .table-main td {
+      padding: 7px 4px;
+      font-size: 0.74rem;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: center;
+      vertical-align: middle;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    tr.is-unassigned .passenger-name { text-decoration: line-through; color: #94a3b8; opacity: 0.75; }
+    tr.is-assigned { background-color: rgba(220, 252, 231, 0.9) !important; }
+    tr.is-assigned .passenger-name { text-decoration: none !important; color: #064e3b; font-weight: 800; opacity: 1; }
+    tr.is-assigned td { color: #064e3b; font-weight: 700; }
+    tr.is-assigned .select-driver { border-color: var(--neon-green); background-color: #ffffff; color: var(--neon-green); font-weight: 800; }
+
+    tr.is-canceled { background-color: #fef2f2 !important; }
+    tr.is-canceled .passenger-name { text-decoration: line-through !important; color: var(--neon-red) !important; opacity: 0.8; }
+
+    .badge-shift {
+      width: 19px; height: 19px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.65rem; color: #fff; margin: 0 auto;
+    }
+    .shift-m { background-color: var(--neon-blue); }
+    .shift-t { background-color: var(--neon-green); }
+    .shift-n { background-color: var(--neon-purple); }
+
+    .badge-mov { font-size: 0.68rem; font-weight: 800; display: inline-flex; align-items: center; gap: 2px; }
+    .mov-entra { color: var(--neon-green); }
+    .mov-sale { color: var(--neon-red); }
+
+    .passenger-name { text-align: left; font-weight: 700; color: var(--text-dark); cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+    .select-driver { background: #ffffff; color: var(--text-dark); border: 1px solid #94a3b8; border-radius: 6px; padding: 4px 2px; font-size: 0.68rem; width: 100%; text-align: center; outline: none; cursor: pointer; }
+
+    .export-deck { padding: 12px 8px 6px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+    .btn-exp { border: none; padding: 8px 2px; border-radius: 8px; font-size: 0.65rem; font-weight: 800; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 2px; }
+    .exp-excel { background: #16a34a; }
+    .exp-print { background: #9333ea; }
+    .exp-view { background: #0284c7; }
+    .exp-simple { background: #eab308; color: #000; }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 999; padding: 16px; }
+    .modal-content { background: rgba(255, 255, 255, 0.98); border: 2px solid var(--neon-blue); border-radius: 14px; width: 100%; max-width: 360px; padding: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-height: 85vh; overflow-y: auto; }
+    .modal-header { font-weight: 800; font-size: 0.95rem; margin-bottom: 10px; color: var(--neon-blue); }
+    .modal-body label { display: block; font-size: 0.72rem; color: var(--text-gray); margin-top: 8px; font-weight: 600; }
+    .modal-body input, .modal-body select { width: 100%; padding: 7px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; color: var(--text-dark); font-size: 0.8rem; margin-top: 3px; }
+    .driver-phone-row { display: grid; grid-template-columns: 1.2fr 1fr; gap: 6px; margin-top: 4px; }
+    .stat-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #e2e8f0; font-size: 0.78rem; }
+    
+    .btn-wsp { background: var(--neon-green); color: #ffffff; border: none; width: 100%; padding: 9px; border-radius: 8px; font-weight: 800; margin-top: 12px; cursor: pointer; }
+    .btn-close { background: #e2e8f0; color: var(--text-dark); border: none; width: 100%; padding: 7px; border-radius: 8px; margin-top: 8px; cursor: pointer; font-weight: 700; }
+
+    #simpleCardContainer { display: none; background: #ffffff; padding: 16px; border-radius: 12px; border: 2px solid #000; }
+    .simple-header { font-size: 1.1rem; font-weight: 900; color: #000; text-align: center; margin-bottom: 12px; border-bottom: 2px solid #000; padding-bottom: 6px; }
+    .simple-item { font-size: 0.9rem; padding: 6px 0; border-bottom: 1px dashed #ccc; display: flex; justify-content: space-between; font-weight: 700; }
+
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: 52px; background: rgba(255, 255, 255, 0.95); border-top: 1px solid #cbd5e1; display: grid; grid-template-columns: repeat(3, 1fr); align-items: center; text-align: center; z-index: 100; }
+    .nav-item { color: var(--text-gray); text-decoration: none; font-size: 0.65rem; font-weight: 700; cursor: pointer; }
+    .nav-item.active { color: var(--neon-green); font-weight: 800; }
+    .nav-icon { font-size: 1rem; display: block; margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+
+  <input type="file" id="scheduleFileInput" accept="image/*" style="display: none;" onchange="handleScheduleUpload(event)">
+
+  <header>
+    <div class="brand-left">
+      <div class="brand-logo">🚌</div>
+      <div class="brand-title">
+        <h1>Transporte <span>LEO</span></h1>
+        <p>Escáner OCR Activo y Confiable</p>
+      </div>
+    </div>
+    <div class="brand-right">
+      <div class="brand-tag">LEO</div>
+      <span class="brand-slogan">Puntualidad y confianza</span>
+    </div>
+  </header>
+
+  <section class="top-cards">
+    <div class="card-btn" onclick="triggerScan()">
+      <div class="card-btn-icon">📷</div>
+      <div class="card-btn-text">
+        <h3>Escanear Cronograma</h3>
+        <p>Lectura automática de imagen ></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="quick-nav">
+    <button class="btn-quick btn-quick-special" onclick="openSpecialTripModal()">➕ Viaje Especial</button>
+    <button class="btn-quick" onclick="openDriverModal()">🚘 Choferes</button>
+    <button class="btn-quick" onclick="openStatsModal()">📊 Estadísticas</button>
+  </section>
+
+  <div class="schedule-banner">
+    <div class="banner-top">
+      <div class="banner-title">📋 Planilla de Personal</div>
+      <div class="filter-box">
+        <span>🔍 Chofer:</span>
+        <select class="select-filter" id="driverFilter" onchange="applyFilters()">
+          <option value="ALL">Todos</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="shift-subfilters">
+      <button class="btn-subfilter active" id="btnShiftAll" onclick="setShiftFilter('ALL')">Todos los Turnos</button>
+      <button class="btn-subfilter" id="btnShiftM" onclick="setShiftFilter('M')">Mañana (M)</button>
+      <button class="btn-subfilter" id="btnShiftT" onclick="setShiftFilter('T')">Tarde (T)</button>
+      <button class="btn-subfilter" id="btnShiftN" onclick="setShiftFilter('N')">Noche (N)</button>
+    </div>
+
+    <button class="btn-share-driver" onclick="shareDriverWhatsApp()">💬 Enviar Resumen al Chofer (WhatsApp Exclusivo)</button>
+  </div>
+
+  <main class="schedule-container" id="scheduleContainer"></main>
+
+  <section class="export-deck">
+    <button class="btn-exp exp-view" onclick="prepareCleanView()">📱 Captura</button>
+    <button class="btn-exp exp-simple" onclick="generateSimpleImage()">🖼️ Imagen Simp.</button>
+    <button class="btn-exp exp-excel" onclick="exportExcel()">📊 CSV</button>
+    <button class="btn-exp exp-print" onclick="window.print()">🖨️ Imprimir</button>
+  </section>
+
+  <!-- Modal Viaje Especial -->
+  <div class="modal-overlay" id="specialTripModal">
+    <div class="modal-content">
+      <div class="modal-header">➕ Agregar Viaje Especial</div>
+      <div class="modal-body">
+        <label>Pasajero:</label>
+        <input type="text" id="spPass" placeholder="Nombre completo">
+        <label>Horario (HH:MM):</label>
+        <input type="time" id="spTime" value="08:00">
+        <label>Celular:</label>
+        <input type="text" id="spPhone" placeholder="Ej: 2657223120">
+        <label>Movimiento (IDA / VUELTA):</label>
+        <select id="spMov">
+          <option value="↑ Entra">↑ IDA (Entra)</option>
+          <option value="↓ Sale">↓ VUELTA (Sale)</option>
+        </select>
+        <label>Dirección:</label>
+        <input type="text" id="spAddr" placeholder="Calle y número">
+        <label>Turno:</label>
+        <select id="spShift">
+          <option value="M">Mañana (M)</option>
+          <option value="T">Tarde (T)</option>
+          <option value="N">Noche (N)</option>
+        </select>
+        <button class="btn-wsp" onclick="saveSpecialTrip()">Guardar Viaje Especial</button>
+      </div>
+      <button class="btn-close" onclick="closeModal('specialTripModal')">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal Ficha Pasajero -->
+  <div class="modal-overlay" id="passengerModal">
+    <div class="modal-content">
+      <div class="modal-header">👤 Ficha de Pasajero</div>
+      <div class="modal-body">
+        <label>Nombre:</label>
+        <input type="text" id="modalPassName" readonly>
+        <label>Dirección:</label>
+        <input type="text" id="modalPassAddr">
+        <label>Teléfono:</label>
+        <input type="text" id="modalPassPhone">
+        <button class="btn-wsp" onclick="sendWhatsAppPassenger()">💬 Contactar por WhatsApp</button>
+      </div>
+      <button class="btn-close" onclick="closeModal('passengerModal')">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- Modal Estadísticas -->
+  <div class="modal-overlay" id="statsModal">
+    <div class="modal-content">
+      <div class="modal-header">📊 Estadísticas del Día</div>
+      <div class="modal-body" id="statsBody"></div>
+      <button class="btn-close" onclick="closeModal('statsModal')">Cerrar</button>
+    </div>
+  </div>
+
+  <!-- Modal Choferes -->
+  <div class="modal-overlay" id="driverModal">
+    <div class="modal-content">
+      <div class="modal-header">🚘 Choferes y Números de WhatsApp</div>
+      <div class="modal-body" id="driverInputsContainer"></div>
+      <button class="btn-wsp" onclick="saveDriversAndPhones()">Guardar Choferes</button>
+      <button class="btn-close" onclick="closeModal('driverModal')">Cancelar</button>
+    </div>
+  </div>
+
+  <!-- Modal Imagen Simplificada -->
+  <div class="modal-overlay" id="simpleImageModal">
+    <div class="modal-content">
+      <div class="modal-header">🖼️ Imagen Simplificada</div>
+      <div class="modal-body">
+        <div id="simpleCardContainer">
+          <div class="simple-header" id="simpleHeaderTitle">TRANSPORTE LEO - RESUMEN</div>
+          <div id="simpleList"></div>
+        </div>
+      </div>
+      <button class="btn-close" onclick="closeModal('simpleImageModal')">Cerrar</button>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-item active" onclick="setShiftFilter('ALL')"><span class="nav-icon">🏠</span>Todos</a>
+    <a class="nav-item" onclick="openStatsModal()"><span class="nav-icon">📊</span>Estadísticas</a>
+    <a class="nav-item" onclick="openDriverModal()"><span class="nav-icon">⚙️</span>Choferes</a>
+  </nav>
+
+  <script>
+    let activeShiftFilter = 'ALL'; 
+    let driverPhones = {
+      "Franco Gramet": "2657223120",
+      "Maximiliano Schiller": "2657223129",
+      "Maximiliano Carraro": "2657223120",
+      "Sebastián Vita": "2657223129",
+      "Emiliano Freytas": "2657223120"
+    };
+
+    let currentScheduleData = [];
+
+    function getDefaultSchedule() {
+      return [
+        { time: "06:00", shift: "M", passenger: "Maximiliano Carraro", addr: "Av. Jauretche 1420", phone: "2657223120", mov: "↑ Entra" },
+        { time: "06:00", shift: "M", passenger: "Freytas Emiliano", addr: "Calle Belgrano 450", phone: "2657223120", mov: "↓ Sale" },
+        { time: "07:00", shift: "M", passenger: "Vita Sebastian", addr: "San Martín 890", phone: "2657223129", mov: "↑ Entra" },
+        { time: "07:00", shift: "M", passenger: "Martina", addr: "Anulado", phone: "", mov: "↓ Sale" },
+        { time: "19:00", shift: "N", passenger: "Maximiliano Schiller", addr: "Bv. Italia 310", phone: "2657223129", mov: "↑ Entra" }
+      ];
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDriverPhones();
+      const saved = localStorage.getItem('leo_active_schedule');
+      if (saved) {
+        currentScheduleData = JSON.parse(saved);
+      } else {
+        currentScheduleData = getDefaultSchedule();
+      }
+      renderSchedule(currentScheduleData);
+      updateDriverFilterSelect();
+    });
+
+    function saveActiveSchedule() {
+      localStorage.setItem('leo_active_schedule', JSON.stringify(currentScheduleData));
+    }
+
+    function updateDriverFilterSelect() {
+      const filterSelect = document.getElementById('driverFilter');
+      filterSelect.innerHTML = '<option value="ALL">Todos</option>';
+      for (let driver in driverPhones) {
+        filterSelect.innerHTML += `<option value="${driver}">${driver}</option>`;
+      }
+    }
+
+    function renderSchedule(data) {
+      const container = document.getElementById('scheduleContainer');
+      container.innerHTML = '';
+
+      let grouped = {};
+      data.forEach((item, index) => {
+        if (!grouped[item.time]) grouped[item.time] = [];
+        grouped[item.time].push({ ...item, id: `row-${index + 1}` });
+      });
+
+      for (let time in grouped) {
+        let items = grouped[time];
+        let cardHtml = `
+          <div class="time-group-card" data-hour="${time}">
+            <div class="time-group-header">
+              <div class="time-title">⏰ Horario ${time} hs</div>
+              <div class="time-count">${items.length} traslados</div>
+            </div>
+            <table class="table-main">
+              <thead>
+                <tr>
+                  <th style="width: 12%;">Turno</th>
+                  <th style="width: 42%;">Pasajero</th>
+                  <th style="width: 20%;">Movimiento</th>
+                  <th style="width: 26%;">Chofer</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+
+        items.forEach(item => {
+          let shiftClass = item.shift === 'M' ? 'shift-m' : (item.shift === 'T' ? 'shift-t' : 'shift-n');
+          let movClean = item.mov.includes('Entra') ? '↑ Entra' : '↓ Sale';
+          let movClass = item.mov.includes('Entra') ? 'mov-entra' : 'mov-sale';
+          
+          let isMartina = item.passenger.toLowerCase().includes('martina');
+
+          let driverOptionsHtml = '<option value="">-- Sin Asignar --</option>';
+          if (isMartina) {
+            driverOptionsHtml = '<option value="" selected>❌ Anulado Auto</option>';
+          } else {
+            for (let driver in driverPhones) {
+              driverOptionsHtml += `<option value="${driver}">${driver}</option>`;
+            }
+          }
+
+          let rowClass = isMartina ? 'is-canceled' : 'is-unassigned';
+
+          cardHtml += `
+            <tr id="${item.id}" class="${rowClass}" data-time="${item.time}" data-shift="${item.shift}">
+              <td><span class="badge-shift ${shiftClass}">${item.shift}</span></td>
+              <td><span class="passenger-name" onclick="openPassengerModal('${item.passenger}', '${item.addr}', '${item.phone}')">${item.passenger}</span></td>
+              <td><span class="badge-mov ${movClass}">${movClean}</span></td>
+              <td>
+                <select class="select-driver" ${isMartina ? 'disabled' : ''} onchange="assignDriver(this, '${item.id}')">
+                  ${driverOptionsHtml}
+                </select>
+              </td>
+            </tr>
+          `;
+        });
+
+        cardHtml += `</tbody></table></div>`;
+        container.innerHTML += cardHtml;
+      }
+      loadState();
+    }
+
+    function setShiftFilter(shift) {
+      activeShiftFilter = shift;
+      document.querySelectorAll('.btn-subfilter').forEach(btn => btn.classList.remove('active'));
+      if (shift === 'ALL') document.getElementById('btnShiftAll').classList.add('active');
+      if (shift === 'M') document.getElementById('btnShiftM').classList.add('active');
+      if (shift === 'T') document.getElementById('btnShiftT').classList.add('active');
+      if (shift === 'N') document.getElementById('btnShiftN').classList.add('active');
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const driverFilter = document.getElementById('driverFilter').value;
+
+      document.querySelectorAll('.time-group-card').forEach(group => {
+        let visibleCount = 0;
+
+        group.querySelectorAll('tbody tr').forEach(row => {
+          const select = row.querySelector('.select-driver');
+          const rowShift = row.getAttribute('data-shift');
+          
+          const driverMatch = (driverFilter === 'ALL' || select.value === driverFilter);
+          const shiftMatch = (activeShiftFilter === 'ALL' || rowShift === activeShiftFilter);
+
+          if (driverMatch && shiftMatch) {
+            row.style.display = '';
+            visibleCount++;
+          } else {
+            row.style.display = 'none';
+          }
+        });
+        group.style.display = visibleCount > 0 ? '' : 'none';
+      });
+    }
+
+    function assignDriver(selectElem, rowId) {
+      updateRowStyles();
+      saveState();
+      applyFilters();
+    }
+
+    function updateRowStyles() {
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        const select = row.querySelector('.select-driver');
+        if (row.classList.contains('is-canceled')) return;
+
+        if (select.value !== "") {
+          row.classList.add('is-assigned');
+          row.classList.remove('is-unassigned');
+        } else {
+          row.classList.remove('is-assigned');
+          row.classList.add('is-unassigned');
+        }
+      });
+    }
+
+    function saveState() {
+      const assignments = {};
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        assignments[row.id] = row.querySelector('.select-driver').value;
+      });
+      localStorage.setItem('leo_assignments_active', JSON.stringify(assignments));
+    }
+
+    function loadState() {
+      const saved = localStorage.getItem('leo_assignments_active');
+      
+      document.querySelectorAll('.select-driver').forEach(s => {
+        if (!s.disabled) s.value = "";
+      });
+
+      if (saved) {
+        const assignments = JSON.parse(saved);
+        for (let id in assignments) {
+          const row = document.getElementById(id);
+          if (row) {
+            const select = row.querySelector('.select-driver');
+            if (!select.disabled) select.value = assignments[id];
+          }
+        }
+      }
+      updateRowStyles();
+    }
+
+    function triggerScan() { document.getElementById('scheduleFileInput').click(); }
+
+    function handleScheduleUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      alert("📷 Analizando imagen con motor OCR... Por favor aguardá unos segundos.");
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1600;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+
+          Tesseract.recognize(canvas.toDataURL('image/jpeg', 0.9), 'spa').then(({ data: { text } }) => {
+            let lines = text.split('\n');
+            let parsed = [];
+            let currentPassenger = "Pasajero Planilla";
+
+            lines.forEach(line => {
+              let l = line.trim();
+              if (!l) return;
+
+              let rangeMatch = l.match(/(\d{1,2})\s*[-–/]\s*(\d{1,2})/);
+              if (rangeMatch) {
+                let startH = parseInt(rangeMatch[1]);
+                let endH = parseInt(rangeMatch[2]);
+
+                if (startH >= 0 && startH <= 23 && endH >= 0 && endH <= 23) {
+                  let startStr = (startH < 10 ? '0' + startH : startH) + ':00';
+                  let endStr = (endH < 10 ? '0' + endH : endH) + ':00';
+
+                  let isMartina = currentPassenger.toLowerCase().includes('martina');
+                  let passFinal = isMartina ? "Martina" : currentPassenger;
+
+                  parsed.push({
+                    time: startStr,
+                    shift: startH >= 18 ? 'N' : (startH >= 12 ? 'T' : 'M'),
+                    passenger: passFinal,
+                    addr: "OCR Escaneado",
+                    phone: "",
+                    mov: "↑ Entra"
+                  });
+
+                  parsed.push({
+                    time: endStr,
+                    shift: endH >= 18 ? 'N' : (endH >= 12 ? 'T' : 'M'),
+                    passenger: passFinal,
+                    addr: "OCR Escaneado",
+                    phone: "",
+                    mov: "↓ Sale"
+                  });
+                }
+              } else if (l.length > 2 && !l.match(/\d/) && !l.toLowerCase().includes('transporte')) {
+                currentPassenger = l.slice(0, 22);
+              }
+            });
+
+            if (parsed.length > 0) {
+              currentScheduleData = parsed;
+            } else {
+              alert("⚠️ No se detectaron rangos horarios claros. Se mantuvo la lista anterior.");
+              return;
+            }
+
+            saveActiveSchedule();
+            renderSchedule(currentScheduleData);
+            alert("✅ ¡Escaneo OCR finalizado con éxito y cargado en pantalla!");
+          }).catch(err => {
+            alert("⚠️ Error en el motor OCR: " + err.message);
+          });
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function shareDriverWhatsApp() {
+      const driver = document.getElementById('driverFilter').value;
+      if (driver === 'ALL') {
+        alert("Seleccioná un chofer específico en el filtro superior para generar su WhatsApp exclusivo.");
+        return;
+      }
+
+      const phone = driverPhones[driver] || "";
+      let text = `🚌 *TRANSPORTE LEO*\nChofer: *${driver}*\n\n`;
+      let count = 0;
+
+      document.querySelectorAll('.time-group-card').forEach(group => {
+        if (group.style.display !== 'none') {
+          const time = group.getAttribute('data-hour');
+          group.querySelectorAll('tbody tr').forEach(row => {
+            const select = row.querySelector('.select-driver');
+            if (row.style.display !== 'none' && select.value === driver) {
+              count++;
+              const passenger = row.querySelector('.passenger-name').innerText;
+              const mov = row.querySelector('.badge-mov').innerText;
+              text += `⏰ *${time} hs* | ${passenger} (${mov})\n`;
+            }
+          });
+        }
+      });
+
+      if (count === 0) {
+        alert(`El chofer ${driver} no tiene traslados asignados.`);
+        return;
+      }
+
+      text += `\nTotal: ${count} viajes\n_Puntualidad y confianza_`;
+      window.open(phone ? `https://wa.me/${phone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+
+    function openSpecialTripModal() { document.getElementById('specialTripModal').style.display = 'flex'; }
+
+    function saveSpecialTrip() {
+      const pass = document.getElementById('spPass').value;
+      const time = document.getElementById('spTime').value;
+      const phone = document.getElementById('spPhone').value;
+      const mov = document.getElementById('spMov').value;
+      const addr = document.getElementById('spAddr').value;
+      const shift = document.getElementById('spShift').value;
+
+      if (!pass) { alert("Por favor ingresá el nombre del pasajero."); return; }
+
+      currentScheduleData.push({ time, shift, passenger: pass, addr, phone, mov });
+      saveActiveSchedule();
+      renderSchedule(currentScheduleData);
+      closeModal('specialTripModal');
+      alert("✅ Viaje especial agregado.");
+    }
+
+    function generateSimpleImage() {
+      document.getElementById('simpleHeaderTitle').innerText = `TRANSPORTE LEO - RESUMEN`;
+      const listContainer = document.getElementById('simpleList');
+      listContainer.innerHTML = '';
+
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        if (row.style.display !== 'none') {
+          const time = row.getAttribute('data-time');
+          const passenger = row.querySelector('.passenger-name').innerText;
+          const mov = row.querySelector('.badge-mov').innerText;
+          listContainer.innerHTML += `<div class="simple-item"><span>⏰ ${time} hs - ${passenger}</span> <span>${mov}</span></div>`;
+        }
+      });
+
+      document.getElementById('simpleCardContainer').style.display = 'block';
+      document.getElementById('simpleImageModal').style.display = 'flex';
+    }
+
+    function openDriverModal() {
+      const container = document.getElementById('driverInputsContainer');
+      container.innerHTML = '';
+      let i = 1;
+      for (let driver in driverPhones) {
+        container.innerHTML += `
+          <label>Chofer ${i} / Teléfono:</label>
+          <div class="driver-phone-row">
+            <input type="text" id="d_name_${i}" value="${driver}">
+            <input type="text" id="d_phone_${i}" value="${driverPhones[driver]}">
+          </div>
+        `;
+        i++;
+      }
+      document.getElementById('driverModal').style.display = 'flex';
+    }
+
+    function saveDriversAndPhones() {
+      let newPhones = {};
+      document.querySelectorAll('.driver-phone-row').forEach((row, idx) => {
+        let name = document.getElementById(`d_name_${idx+1}`).value.trim();
+        let phone = document.getElementById(`d_phone_${idx+1}`).value.trim();
+        if (name) newPhones[name] = phone;
+      });
+      driverPhones = newPhones;
+      localStorage.setItem('leo_driver_phones', JSON.stringify(driverPhones));
+      closeModal('driverModal');
+      updateDriverFilterSelect();
+      renderSchedule(currentScheduleData);
+    }
+
+    function loadDriverPhones() {
+      const saved = localStorage.getItem('leo_driver_phones');
+      if (saved) driverPhones = JSON.parse(saved);
+    }
+
+    function openStatsModal() {
+      let total = 0, assigned = 0, byDriver = {};
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        if (row.style.display !== 'none') {
+          total++;
+          let d = row.querySelector('.select-driver').value;
+          if (d !== "" && !d.includes('Anulado')) { assigned++; byDriver[d] = (byDriver[d] || 0) + 1; }
+        }
+      });
+      let html = `<div class="stat-row"><strong>Total Visibles:</strong> <span>${total}</span></div><div class="stat-row"><strong>Asignados:</strong> <span style="color:var(--neon-green)">${assigned}</span></div>`;
+      for (let d in byDriver) html += `<div class="stat-row"><span>${d}</span>: <strong>${byDriver[d]}</strong></div>`;
+      document.getElementById('statsBody').innerHTML = html;
+      document.getElementById('statsModal').style.display = 'flex';
+    }
+
+    function prepareCleanView() { window.scrollTo(0, 0); alert("Vista limpia activada."); }
+    function exportExcel() {
+      let csv = "Horario,Turno,Pasajero,Movimiento,Chofer\n";
+      document.querySelectorAll('.table-main tbody tr').forEach(row => {
+        if (row.style.display !== 'none') {
+          const cols = row.querySelectorAll('td');
+          csv += `"${row.getAttribute('data-time')}","${cols[0].innerText}","${cols[1].innerText}","${cols[2].innerText}","${cols[3].querySelector('select').value || 'Sin Asignar'}"\n`;
+        }
+      });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      a.download = `cronograma_leo.csv`;
+      a.click();
+    }
+
+    function openPassengerModal(name, addr, phone) {
+      document.getElementById('modalPassName').value = name;
+      document.getElementById('modalPassAddr').value = addr;
+      document.getElementById('modalPassPhone').value = phone;
+      document.getElementById('passengerModal').style.display = 'flex';
+    }
+
+    function sendWhatsAppPassenger() {
+      window.open(`https://wa.me/${document.getElementById('modalPassPhone').value}?text=${encodeURIComponent("Hola, te contactamos desde Transporte LEO para confirmar tu traslado.")}`, '_blank');
+    }
+
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+  </script>
+</body>
+</html>
