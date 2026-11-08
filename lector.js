@@ -555,8 +555,9 @@ window.LeoReader = (function () {
       " posibles horarios."
     );
 
-    return candidates;
-  }
+    return {
+  candidates: candidates
+};
 
   // ------------------------------------------
   // API PARA INDEX.HTML
