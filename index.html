@@ -4,656 +4,503 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Leo App - Lector de cronogramas</title>
+<title>Leo App - Cronogramas</title>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <style>
-:root {
-  font-family: Arial, sans-serif;
-  color: #172033;
-  background: #f2f5f9;
+*{box-sizing:border-box}
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#edf2f7;
+  color:#172033;
 }
-* { box-sizing: border-box; }
-body { margin: 0; }
-header {
-  background: #142b4a;
-  color: white;
-  padding: 22px 16px;
+header{
+  background:white;
+  padding:16px;
+  border-bottom:2px solid #dce5ed;
+  display:flex;
+  align-items:center;
+  gap:12px;
 }
-header h1 { margin: 0; font-size: 27px; }
-header p { margin: 7px 0 0; color: #d3dfed; }
-main { max-width: 1000px; margin: auto; padding: 16px; }
-.card {
-  background: white;
-  border-radius: 13px;
-  padding: 17px;
-  margin: 14px 0;
-  box-shadow: 0 2px 9px #152b4510;
+.logo{
+  width:58px;height:58px;
+  border:3px solid #159b58;
+  border-radius:14px;
+  display:grid;place-items:center;
+  font-size:30px;
 }
-h2 { font-size: 19px; margin: 0 0 13px; }
-label {
-  display: block;
-  font-weight: bold;
-  font-size: 13px;
-  margin: 10px 0 5px;
+header h2{margin:0;color:#159b58}
+header small{color:#3882a5}
+main{padding:14px;max-width:900px;margin:auto}
+.panel{
+  background:white;
+  border:1px solid #d4dde6;
+  border-radius:15px;
+  padding:15px;
+  margin-bottom:14px;
+  box-shadow:0 2px 5px #0000000c;
 }
-input, select, textarea, button { font: inherit; }
-input, select, textarea {
-  width: 100%;
-  padding: 11px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: white;
+h3{margin:0 0 12px;color:#287e9f}
+button,.button{
+  border:1px solid #cbd5df;
+  border-radius:10px;
+  padding:12px;
+  background:white;
+  font-size:15px;
+  font-weight:bold;
+  cursor:pointer;
 }
-textarea { min-height: 130px; resize: vertical; }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2,minmax(0,1fr));
-  gap: 10px;
+button.primary{
+  background:#087fb5;
+  color:white;
+  border:0;
 }
-button {
-  border: 0;
-  border-radius: 8px;
-  padding: 11px 14px;
-  background: #1c65ad;
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
-  margin: 5px 4px 3px 0;
+button.green{
+  background:#159b58;
+  color:white;
+  border:0;
 }
-button.secondary { background: #e7edf5; color: #1b3554; }
-button.danger { background: #b93838; }
-button:disabled { opacity: .5; cursor: wait; }
-.small { font-size: 12px; color: #64748b; }
-.status {
-  padding: 10px;
-  background: #eef5fc;
-  border-radius: 8px;
-  margin-top: 10px;
-  white-space: pre-wrap;
+button:disabled{opacity:.5}
+.full{width:100%;margin-top:8px}
+input,select{
+  padding:11px;
+  border:1px solid #cbd5df;
+  border-radius:9px;
+  font-size:15px;
+  max-width:100%;
 }
-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-th,td {
-  text-align: left;
-  padding: 10px 7px;
-  border-bottom: 1px solid #e5eaf0;
+#status{
+  padding:12px;
+  background:#edf7fc;
+  border-radius:10px;
+  color:#246d91;
+  margin-top:10px;
+  white-space:pre-wrap;
 }
-th { background: #f5f8fb; }
-.table-wrap { overflow-x: auto; }
-.pill {
-  display: inline-block;
-  background: #e6f1fc;
-  color: #174e80;
-  border-radius: 20px;
-  padding: 4px 9px;
-  font-weight: bold;
+progress{width:100%;height:15px;margin-top:8px}
+.tabs{
+  display:flex;
+  gap:7px;
+  margin:12px 0;
 }
-.empty { color: #64748b; text-align: center; padding: 22px; }
-footer {
-  text-align: center;
-  color: #64748b;
-  padding: 25px;
-  font-size: 12px;
+.tabs button{flex:1}
+.tabs button.active{
+  background:#087fb5;color:white;
 }
-@media(max-width:600px) {
-  .grid { grid-template-columns: 1fr; }
-  main { padding: 10px; }
-  .card { padding: 14px; }
-  button { width: 100%; margin: 5px 0; }
+.entry{
+  padding:12px;
+  border-bottom:1px solid #e0e6eb;
 }
+.entry strong{color:#167c9e}
+.entry small{display:block;color:#657487;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{
+  border-bottom:1px solid #e0e6eb;
+  padding:8px 5px;
+  text-align:left;
+}
+th{background:#edf4f8}
+td input{width:100%;min-width:65px;padding:6px}
+.actions{display:flex;gap:7px;flex-wrap:wrap}
+.muted{color:#667788;font-size:13px}
+#preview{max-width:100%;max-height:250px;display:none;margin:10px auto}
+.daygrid{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:4px;
+}
+.daygrid div{
+  background:#f1f5f8;
+  padding:9px 2px;
+  text-align:center;
+  border-radius:6px;
+  font-size:13px;
+}
+.daygrid .selected{background:#087fb5;color:white}
+.daygrid .hasdata{border:2px solid #159b58}
 </style>
 </head>
 
 <body>
 
 <header>
-  <h1>LEO APP</h1>
-  <p>Lector automático de cronogramas</p>
+  <div class="logo">🚌</div>
+  <div>
+    <h2>Transporte LEO</h2>
+    <small>Escáner OCR de cronogramas</small>
+  </div>
 </header>
 
 <main>
 
-<section class="card">
-  <h2>1. Cargar cronograma</h2>
-
-  <label for="images">Seleccionar imágenes</label>
-  <input id="images" type="file" accept="image/*" multiple>
-
-  <p class="small">
-    Subí una o varias fotos del cronograma.
-    El sistema intentará detectar automáticamente filas, columnas y horarios.
+<section class="panel">
+  <h3>📷 Escanear cronograma</h3>
+  <p class="muted">
+    Subí una o varias imágenes. Leo App intentará detectar
+    automáticamente los meses, días, nombres y horarios.
   </p>
 
-  <button id="readBtn" onclick="readImages()">
-    Leer cronograma automáticamente
+  <input id="files" type="file" accept="image/*" multiple class="full">
+
+  <img id="preview" alt="Vista previa">
+
+  <button id="scanBtn" class="primary full">
+    🔍 Leer cronograma automáticamente
   </button>
 
-  <div id="ocrStatus" class="status">
-    Esperando imágenes.
-  </div>
-
-  <label for="period">Mes y año del cronograma</label>
-  <input id="period" type="month">
-
-  <label for="ocrText">Texto OCR reconocido</label>
-  <textarea id="ocrText" placeholder="Texto reconocido..."></textarea>
+  <progress id="progress" value="0" max="100"></progress>
+  <div id="status">Esperando una imagen.</div>
 </section>
 
-<section class="card">
-  <h2>2. Revisar horarios detectados</h2>
+<section class="panel">
+  <h3>📅 Calendario</h3>
 
-  <p class="small">
-    Los resultados son candidatos. Revisalos antes de guardarlos.
-    Los horarios inferidos necesitan confirmación.
+  <div class="tabs">
+    <button class="active" data-mode="day">Día</button>
+    <button data-mode="week">Semana</button>
+    <button data-mode="month">Mes</button>
+  </div>
+
+  <input type="date" id="calendarDate" class="full">
+
+  <div id="calendarGrid" class="daygrid"></div>
+  <p id="calendarInfo" class="muted"></p>
+</section>
+
+<section class="panel">
+  <h3>📝 Revisar horarios detectados</h3>
+  <p class="muted">
+    Corregí nombres, fechas u horarios. Solo se guardan
+    los registros que confirmes.
   </p>
 
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Pasajero</th>
-          <th>Día</th>
-          <th>Texto original</th>
-          <th>Horario</th>
-          <th>Estado</th>
-        </tr>
-      </thead>
-      <tbody id="candidateRows">
-        <tr><td colspan="5" class="empty">Todavía no hay resultados.</td></tr>
-      </tbody>
-    </table>
+  <div id="review">
+    <p class="muted">Todavía no hay resultados.</p>
   </div>
 
-  <button onclick="saveCandidates()">Guardar horarios confirmados</button>
+  <button id="saveBtn" class="green full">
+    Guardar horarios confirmados
+  </button>
 </section>
 
-<section class="card">
-  <h2>3. Cargar o corregir un turno</h2>
+<section class="panel">
+  <h3>📋 Planilla de personal</h3>
+  <div id="records"></div>
 
-  <div class="grid">
-    <div>
-      <label for="entryPeriod">Mes y año</label>
-      <input id="entryPeriod" type="month">
-    </div>
-
-    <div>
-      <label for="day">Día del mes</label>
-      <input id="day" type="number" min="1" max="31" placeholder="Ej. 12">
-    </div>
-
-    <div>
-      <label for="person">Nombre del pasajero</label>
-      <input id="person" type="text" placeholder="Nombre y apellido">
-    </div>
-
-    <div>
-      <label for="hours">Horario</label>
-      <input id="hours" type="text" placeholder="Ej. 6-18hs o 19-7">
-    </div>
+  <div class="actions">
+    <button id="csvBtn">Exportar CSV</button>
+    <button id="backupBtn">Respaldo JSON</button>
+    <button id="clearBtn">Borrar datos</button>
   </div>
-
-  <button onclick="saveEntry()">Guardar turno</button>
-  <button class="secondary" onclick="clearForm()">Limpiar</button>
-
-  <div id="formStatus" class="status" hidden></div>
-</section>
-
-<section class="card">
-  <h2>4. Consultar turnos</h2>
-
-  <div class="grid">
-    <div>
-      <label for="filterPeriod">Filtrar por mes</label>
-      <input id="filterPeriod" type="month" onchange="render()">
-    </div>
-
-    <div>
-      <label for="filterDay">Filtrar por día</label>
-      <input id="filterDay" type="number" min="1" max="31"
-        placeholder="Todos" oninput="render()">
-    </div>
-
-    <div>
-      <label for="search">Buscar pasajero u horario</label>
-      <input id="search" type="search"
-        placeholder="Buscar..." oninput="render()">
-    </div>
-
-    <div>
-      <label for="sort">Orden</label>
-      <select id="sort" onchange="render()">
-        <option value="day">Día y horario</option>
-        <option value="name">Pasajero</option>
-      </select>
-    </div>
-  </div>
-
-  <div id="summary" class="status"></div>
-
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>Mes</th>
-          <th>Día</th>
-          <th>Horario</th>
-          <th>Pasajero</th>
-          <th>Acción</th>
-        </tr>
-      </thead>
-      <tbody id="rows"></tbody>
-    </table>
-  </div>
-</section>
-
-<section class="card">
-  <h2>5. Respaldo y exportación</h2>
-
-  <button onclick="exportCSV()">Descargar Excel / CSV</button>
-  <button onclick="backupJSON()">Guardar respaldo completo</button>
-
-  <label for="restoreFile">Restaurar respaldo JSON</label>
-  <input id="restoreFile" type="file" accept=".json,application/json">
-
-  <button class="secondary" onclick="restoreJSON()">Importar respaldo</button>
-
-  <p class="small">
-    Los datos se guardan en este navegador y dispositivo.
-  </p>
 </section>
 
 </main>
 
-<footer>
-  Leo App · Lector de cronogramas
-</footer>
+<script src="./lector.js"></script>
 
 <script>
-const DB_KEY = "leoapp_turnos_v1";
-let entries = loadEntries();
+const $ = id => document.getElementById(id);
+
 let candidates = [];
-let editingId = null;
+let records = [];
+let calendarMode = "day";
 
-function loadEntries() {
-  try {
-    const data = JSON.parse(localStorage.getItem(DB_KEY) || "[]");
-    return Array.isArray(data) ? data : [];
-  } catch {
-    return [];
-  }
-}
-
-function persist() {
-  localStorage.setItem(DB_KEY, JSON.stringify(entries));
-}
-
-function normalizeHours(value) {
-  let s = value.trim().toLowerCase()
-    .replace(/\s/g,"")
-    .replace(/hs\.?/g,"")
-    .replace(/[–—−]/g,"-");
-
-  const match = s.match(/^(\d{1,2})-(\d{1,2})$/);
-  if (!match) return null;
-
-  const a = Number(match[1]);
-  const b = Number(match[2]);
-
-  if (a > 23 || b > 23) return null;
-  return `${a}-${b}`;
-}
-
-function showStatus(id,msg) {
-  const el = document.getElementById(id);
-  el.hidden = false;
-  el.textContent = msg;
-}
-
-function makeId() {
-  return Date.now().toString(36) + "-" +
-    Math.random().toString(36).slice(2,9);
-}
-
-function saveEntry() {
-  const period = document.getElementById("entryPeriod").value ||
-    document.getElementById("period").value;
-
-  const day = Number(document.getElementById("day").value);
-  const person = document.getElementById("person").value.trim();
-  const hours = normalizeHours(document.getElementById("hours").value);
-
-  if (!/^\d{4}-\d{2}$/.test(period) ||
-      !person || !day || day < 1 || day > 31 || !hours) {
-    showStatus("formStatus","Revisá los datos ingresados.");
-    return;
-  }
-
-  const existing = entries.find(e =>
-    e.period === period &&
-    e.day === day &&
-    e.person.toLowerCase() === person.toLowerCase()
+try {
+  records = JSON.parse(
+    localStorage.getItem("leo_records") || "[]"
   );
+} catch(e) {
+  records = [];
+}
 
-  if (existing && existing.id !== editingId) {
-    if (existing.hours === hours) {
-      showStatus("formStatus","Ese turno ya estaba cargado.");
-      return;
-    }
+function saveStorage(){
+  localStorage.setItem("leo_records",JSON.stringify(records));
+}
 
-    existing.hours = hours;
-    persist();
-    clearForm();
-    render();
-    showStatus("formStatus","Horario anterior actualizado.");
+function message(text){
+  $("status").textContent = text;
+}
+
+$("files").addEventListener("change",()=>{
+  const file = $("files").files[0];
+  if(!file) return;
+
+  $("preview").src = URL.createObjectURL(file);
+  $("preview").style.display = "block";
+  message("Imagen cargada. Lista para analizar.");
+});
+
+$("scanBtn").addEventListener("click",async()=>{
+  const files = Array.from($("files").files);
+
+  if(!files.length){
+    message("Primero seleccioná una imagen.");
     return;
   }
 
-  if (editingId) {
-    const target = entries.find(e => e.id === editingId);
-    if (target) {
-      Object.assign(target,{period,day,person,hours});
-    }
-    editingId = null;
-  } else {
-    entries.push({
-      id:makeId(),period,day,person,hours,
-      createdAt:new Date().toISOString()
-    });
-  }
-
-  persist();
-  clearForm();
-  render();
-  showStatus("formStatus","Turno guardado correctamente.");
-}
-
-function clearForm() {
-  ["day","person","hours"].forEach(id =>
-    document.getElementById(id).value = ""
-  );
-  editingId = null;
-}
-
-function editEntry(id) {
-  const e = entries.find(x => x.id === id);
-  if (!e) return;
-
-  document.getElementById("entryPeriod").value = e.period;
-  document.getElementById("day").value = e.day;
-  document.getElementById("person").value = e.person;
-  document.getElementById("hours").value = e.hours;
-
-  editingId = id;
-  window.scrollTo({
-    top:document.getElementById("entryPeriod").getBoundingClientRect().top +
-      window.scrollY - 80,
-    behavior:"smooth"
-  });
-}
-
-function deleteEntry(id) {
-  if (!confirm("¿Eliminar este turno?")) return;
-  entries = entries.filter(e => e.id !== id);
-  persist();
-  render();
-}
-
-function esc(s) {
-  return String(s).replace(/[&<>"']/g,c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-  }[c]));
-}
-
-/* LECTOR AUTOMÁTICO */
-
-async function readImages() {
-  const files = [...document.getElementById("images").files];
-
-  if (!files.length) {
-    showStatus("ocrStatus","Primero seleccioná una imagen.");
-    return;
-  }
-
-  if (!window.LeoReader) {
-    showStatus("ocrStatus","No se cargó lector.js. Revisá que esté en la raíz del repositorio.");
-    return;
-  }
-
-  const period = document.getElementById("period").value;
-
-  if (!period) {
-    showStatus("ocrStatus","Seleccioná el mes y año del cronograma.");
-    return;
-  }
-
-  const btn = document.getElementById("readBtn");
-  btn.disabled = true;
   candidates = [];
+  $("review").innerHTML = "";
+  $("progress").value = 0;
 
-  try {
-    for (let i = 0; i < files.length; i++) {
-      showStatus("ocrStatus",`Procesando imagen ${i+1} de ${files.length}...`);
+  $("scanBtn").disabled = true;
 
-      const result = await LeoReader.scan(files[i], message => {
-        showStatus("ocrStatus",`Imagen ${i+1}/${files.length}: ${message}`);
-      });
+  try{
+    for(let i=0;i<files.length;i++){
+      message("Analizando imagen "+(i+1)+" de "+files.length+"...");
 
-      candidates.push(...result.candidates);
+      const result = await LeoReader.scan(
+        files[i],
+        (percent,text)=>{
+          $("progress").value = percent;
+          message(text);
+        }
+      );
 
-      document.getElementById("ocrText").value +=
-        `\nImagen ${i+1}: ${result.rows} filas y ${result.columns} columnas detectadas.\n`;
+      if(result && Array.isArray(result.candidates)){
+        candidates.push(...result.candidates);
+      }
     }
 
-    renderCandidates();
+    renderReview();
 
-    showStatus("ocrStatus",
-      `Lectura terminada. Se encontraron ${candidates.length} horarios candidatos. Revisalos antes de guardar.`
+    message(
+      "Análisis terminado. Se encontraron "+
+      candidates.length+
+      " posibles horarios. Revisalos antes de guardar."
     );
 
-  } catch(err) {
-    showStatus("ocrStatus","Error de lectura: "+err.message);
-  } finally {
-    btn.disabled = false;
+    $("progress").value = 100;
+
+  }catch(error){
+    message("Error de lectura: "+error.message);
+  }finally{
+    $("scanBtn").disabled = false;
   }
+});
+
+function escapeHTML(value){
+  return String(value ?? "").replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",
+    '"':"&quot;","'":"&#39;"
+  })[c]);
 }
 
-function renderCandidates() {
-  const tbody = document.getElementById("candidateRows");
-
-  if (!candidates.length) {
-    tbody.innerHTML =
-      '<tr><td colspan="5" class="empty">No se detectaron horarios.</td></tr>';
+function renderReview(){
+  if(!candidates.length){
+    $("review").innerHTML="<p>No se encontraron horarios.</p>";
     return;
   }
 
-  tbody.innerHTML = candidates.map((c,i) => `
+  let html="<div style='overflow-x:auto'><table>";
+  html+="<tr><th>Nombre</th><th>Fecha</th><th>Horario</th><th>Estado</th></tr>";
+
+  candidates.forEach((item,i)=>{
+    html+=`
     <tr>
-      <td><input value="${esc(c.person)}"
-        onchange="candidates[${i}].person=this.value"></td>
-      <td><input type="number" min="1" max="31"
-        value="${c.day}" onchange="candidates[${i}].day=Number(this.value)"></td>
-      <td>${esc(c.raw)}</td>
-      <td><input value="${esc(c.hours)}"
-        onchange="candidates[${i}].hours=this.value"></td>
+      <td><input data-i="${i}" data-field="person" value="${escapeHTML(item.person)}"></td>
+      <td><input data-i="${i}" data-field="date" type="date" value="${escapeHTML(item.date || "")}"></td>
+      <td><input data-i="${i}" data-field="hours" value="${escapeHTML(item.hours)}"></td>
       <td>
-        <select onchange="candidates[${i}].status=this.value">
-          <option value="pendiente" ${c.status==="pendiente"?"selected":""}>Pendiente</option>
-          <option value="confirmado">Confirmado</option>
-          <option value="inferido" ${c.confidence==="inferido"?"selected":""}>Inferido</option>
+        <select data-i="${i}" data-field="status">
+          <option value="pendiente" ${item.status==="pendiente"?"selected":""}>Pendiente</option>
+          <option value="confirmado">Confirmar</option>
+          <option value="inferido" ${item.status==="inferido"?"selected":""}>Inferido</option>
           <option value="descartar">Descartar</option>
         </select>
       </td>
-    </tr>
-  `).join("");
-}
-
-function saveCandidates() {
-  const period = document.getElementById("period").value;
-
-  if (!period) {
-    alert("Seleccioná el mes y año.");
-    return;
-  }
-
-  let saved = 0;
-
-  for (const c of candidates) {
-    if (c.status !== "confirmado") continue;
-
-    const person = String(c.person || "").trim();
-    const day = Number(c.day);
-    const hours = normalizeHours(c.hours);
-
-    if (!person || !day || day < 1 || day > 31 || !hours) continue;
-
-    const existing = entries.find(e =>
-      e.period === period &&
-      e.day === day &&
-      e.person.toLowerCase() === person.toLowerCase()
-    );
-
-    if (existing) existing.hours = hours;
-    else entries.push({
-      id:makeId(),period,day,person,hours
-    });
-
-    saved++;
-  }
-
-  persist();
-  render();
-
-  alert(`${saved} turnos confirmados y guardados.`);
-}
-
-function render() {
-  const period = document.getElementById("filterPeriod").value;
-  const day = document.getElementById("filterDay").value;
-  const q = document.getElementById("search").value.trim().toLowerCase();
-
-  let list = entries.filter(e =>
-    (!period || e.period === period) &&
-    (!day || e.day === Number(day)) &&
-    (!q || (e.person+" "+e.hours).toLowerCase().includes(q))
-  );
-
-  list.sort((a,b) => {
-    if (document.getElementById("sort").value === "name")
-      return a.person.localeCompare(b.person,"es") || a.day-b.day;
-
-    return a.period.localeCompare(b.period) ||
-      a.day-b.day || a.hours.localeCompare(b.hours);
+    </tr>`;
   });
 
-  document.getElementById("summary").textContent =
-    `${list.length} turnos encontrados · ${new Set(list.map(e=>e.person)).size} pasajeros`;
+  html+="</table></div>";
+  $("review").innerHTML=html;
 
-  const tbody = document.getElementById("rows");
+  $("review").querySelectorAll("[data-i]").forEach(el=>{
+    el.addEventListener("change",()=>{
+      const i=Number(el.dataset.i);
+      candidates[i][el.dataset.field]=el.value;
+    });
+  });
+}
 
-  if (!list.length) {
-    tbody.innerHTML =
-      '<tr><td colspan="5" class="empty">Todavía no hay turnos.</td></tr>';
+$("saveBtn").addEventListener("click",()=>{
+  let saved=0;
+
+  candidates.forEach(item=>{
+    if(item.status!=="confirmado") return;
+    if(!item.person || !item.date || !item.hours) return;
+
+    const existing=records.findIndex(r=>
+      r.person.toLowerCase()===item.person.toLowerCase() &&
+      r.date===item.date
+    );
+
+    const entry={
+      person:item.person.trim(),
+      date:item.date,
+      hours:item.hours.trim()
+    };
+
+    if(existing>=0){
+      records[existing]=entry;
+    }else{
+      records.push(entry);
+    }
+
+    saved++;
+  });
+
+  saveStorage();
+  renderRecords();
+  renderCalendar();
+
+  message("Se guardaron "+saved+" horarios confirmados.");
+});
+
+function renderRecords(){
+  const filtered=records.slice().sort((a,b)=>
+    a.date.localeCompare(b.date) ||
+    a.hours.localeCompare(b.hours)
+  );
+
+  if(!filtered.length){
+    $("records").innerHTML="<p class='muted'>No hay horarios guardados.</p>";
     return;
   }
 
-  tbody.innerHTML = list.map(e => `
-    <tr>
-      <td>${esc(e.period)}</td>
-      <td>${e.day}</td>
-      <td><span class="pill">${esc(e.hours)}hs</span></td>
-      <td>${esc(e.person)}</td>
-      <td>
-        <button class="secondary" onclick="editEntry('${e.id}')">Editar</button>
-        <button class="danger" onclick="deleteEntry('${e.id}')">Borrar</button>
-      </td>
-    </tr>
+  $("records").innerHTML=filtered.map(r=>`
+    <div class="entry">
+      <strong>${escapeHTML(r.person)}</strong>
+      <div>${escapeHTML(r.date)} · ${escapeHTML(r.hours)} hs</div>
+    </div>
   `).join("");
 }
 
-function downloadFile(name,content,type) {
-  const blob = new Blob([content],{type});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
+function renderCalendar(){
+  const value=$("calendarDate").value;
+  if(!value) return;
+
+  const selected=new Date(value+"T12:00:00");
+  let filtered=records;
+
+  if(calendarMode==="day"){
+    filtered=records.filter(r=>r.date===value);
+  }
+
+  if(calendarMode==="week"){
+    const start=new Date(selected);
+    const weekday=(start.getDay()+6)%7;
+    start.setDate(start.getDate()-weekday);
+
+    const end=new Date(start);
+    end.setDate(end.getDate()+7);
+
+    filtered=records.filter(r=>{
+      const d=new Date(r.date+"T12:00:00");
+      return d>=start && d<end;
+    });
+  }
+
+  if(calendarMode==="month"){
+    filtered=records.filter(r=>
+      r.date.slice(0,7)===value.slice(0,7)
+    );
+  }
+
+  $("calendarInfo").textContent=
+    filtered.length+" horarios para la vista seleccionada.";
+
+  if(calendarMode==="month"){
+    const year=selected.getFullYear();
+    const month=selected.getMonth();
+    const first=new Date(year,month,1);
+    const count=new Date(year,month+1,0).getDate();
+
+    let html=["L","M","M","J","V","S","D"]
+      .map(d=>`<div>${d}</div>`).join("");
+
+    for(let i=0;i<(first.getDay()+6)%7;i++){
+      html+="<div></div>";
+    }
+
+    for(let d=1;d<=count;d++){
+      const date=year+"-"+String(month+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+      const has=records.some(r=>r.date===date);
+      html+=`<div class="${has?"hasdata":""}">${d}</div>`;
+    }
+
+    $("calendarGrid").innerHTML=html;
+  }else{
+    $("calendarGrid").innerHTML="";
+  }
+
+  $("calendarInfo").textContent += filtered.length
+    ? " · "+filtered.map(r=>r.person+" ("+r.hours+")").join(", ")
+    : "";
+}
+
+document.querySelectorAll("[data-mode]").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    calendarMode=btn.dataset.mode;
+
+    document.querySelectorAll("[data-mode]").forEach(b=>
+      b.classList.toggle("active",b===btn)
+    );
+
+    renderCalendar();
+  });
+});
+
+$("calendarDate").value=new Date().toISOString().slice(0,10);
+$("calendarDate").addEventListener("change",renderCalendar);
+
+$("csvBtn").addEventListener("click",()=>{
+  const lines=[
+    ["Pasajero","Fecha","Horario"],
+    ...records.map(r=>[r.person,r.date,r.hours])
+  ];
+
+  const csv=lines.map(row=>
+    row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(";")
+  ).join("\n");
+
+  downloadFile(
+    "\uFEFF"+csv,
+    "leo-cronogramas.csv",
+    "text/csv;charset=utf-8"
+  );
+});
+
+$("backupBtn").addEventListener("click",()=>{
+  downloadFile(
+    JSON.stringify(records,null,2),
+    "leo-respaldo.json",
+    "application/json"
+  );
+});
+
+$("clearBtn").addEventListener("click",()=>{
+  if(!confirm("¿Borrar todos los horarios guardados?")) return;
+  records=[];
+  saveStorage();
+  renderRecords();
+  renderCalendar();
+});
+
+function downloadFile(content,name,type){
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=name;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-function exportCSV() {
-  const header = ["Mes","Día","Horario","Pasajero"];
-  const lines = [header,...entries.map(e =>
-    [e.period,e.day,e.hours,e.person]
-  )];
-
-  const csv = "\uFEFF" + lines.map(row =>
-    row.map(v => '"'+String(v).replace(/"/g,'""')+'"').join(";")
-  ).join("\r\n");
-
-  downloadFile("leoapp_turnos.csv",csv,"text/csv;charset=utf-8");
-}
-
-function backupJSON() {
-  downloadFile(
-    "leoapp_respaldo.json",
-    JSON.stringify({app:"Leo App",version:1,entries},null,2),
-    "application/json"
-  );
-}
-
-async function restoreJSON() {
-  const file = document.getElementById("restoreFile").files[0];
-
-  if (!file) {
-    alert("Seleccioná primero un archivo JSON.");
-    return;
-  }
-
-  try {
-    const data = JSON.parse(await file.text());
-    const incoming = Array.isArray(data) ? data : data.entries;
-
-    if (!Array.isArray(incoming)) {
-      throw new Error("Archivo inválido.");
-    }
-
-    if (!confirm("¿Importar y actualizar los turnos existentes?")) return;
-
-    for (const e of incoming) {
-      if (!e.period || !e.day || !e.person || !normalizeHours(e.hours)) continue;
-
-      const existing = entries.find(x =>
-        x.period === e.period &&
-        x.day === Number(e.day) &&
-        x.person.toLowerCase() === String(e.person).toLowerCase()
-      );
-
-      if (existing) existing.hours = normalizeHours(e.hours);
-      else entries.push({
-        id:makeId(),
-        period:e.period,
-        day:Number(e.day),
-        person:String(e.person),
-        hours:normalizeHours(e.hours)
-      });
-    }
-
-    persist();
-    render();
-    alert("Respaldo importado correctamente.");
-
-  } catch(err) {
-    alert("No se pudo importar: "+err.message);
-  }
-}
-
-render();
+renderRecords();
+renderCalendar();
 </script>
-
-<!-- CARGA DEL MOTOR DE CUADRÍCULAS -->
-<script async src="https://docs.opencv.org/4.x/opencv.js"></script>
-<script src="./lector.js"></script>
 
 </body>
 </html>
