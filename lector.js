@@ -1,16 +1,14 @@
 
 /* ==========================================
    TRANSPORTE LEO - LECTOR OCR
-   Corrección de detección de días y horarios
+   Diagnostico de filas, columnas y horarios
    ========================================== */
 
 window.LeoReader = (function () {
   "use strict";
 
   function progress(callback, percent, message) {
-    if (typeof callback === "function") {
-      callback(percent, message);
-    }
+    if (typeof callback === "function") callback(percent, message);
   }
 
   function clean(value) {
@@ -76,7 +74,6 @@ window.LeoReader = (function () {
       });
 
       const result = await worker.recognize(canvas);
-
       progress(callback, 75, "Texto reconocido.");
 
       return result.data;
@@ -141,8 +138,6 @@ window.LeoReader = (function () {
     return rows.sort((a, b) => a.y - b.y);
   }
 
-  // Acepta solamente números independientes.
-  // No confunde 6-18hs o 19-7hs con días.
   function numbersIn(text) {
     let value = clean(text)
       .replace(/[Oo]/g, "0")
@@ -150,20 +145,15 @@ window.LeoReader = (function () {
 
     value = value.replace(/^[^\d]+|[^\d]+$/g, "");
 
-    if (!/^\d{1,2}$/.test(value)) {
-      return [];
-    }
+    if (!/^\d{1,2}$/.test(value)) return [];
 
     const number = Number(value);
 
-    if (number < 1 || number > 31) {
-      return [];
-    }
+    if (number < 1 || number > 31) return [];
 
     return [number];
   }
 
-  // Busca la fila que más se parece a una secuencia de días.
   function findDaysRow(rows) {
     let best = null;
     let bestScore = -Infinity;
@@ -173,10 +163,7 @@ window.LeoReader = (function () {
 
       row.words.forEach(word => {
         numbersIn(word.text).forEach(day => {
-          found.push({
-            day,
-            x: word.x
-          });
+          found.push({ day, x: word.x });
         });
       });
 
@@ -247,9 +234,7 @@ window.LeoReader = (function () {
     for (let i = 1; i < days.length; i++) {
       const distance = days[i].x - days[i - 1].x;
 
-      if (distance > 5) {
-        distances.push(distance);
-      }
+      if (distance > 5) distances.push(distance);
     }
 
     return median(distances);
@@ -325,10 +310,7 @@ window.LeoReader = (function () {
 
       if (!/[a-záéíóúñ]/i.test(name)) return;
 
-      passengers.push({
-        name,
-        row
-      });
+      passengers.push({ name, row });
     });
 
     return passengers;
@@ -427,10 +409,89 @@ window.LeoReader = (function () {
       });
     });
 
-    return {
-      passengers,
-      candidates
-    };
+    return { passengers, candidates };
+  }
+
+  function buildDiagnostic(rows, dayRow, dates, result) {
+    const out = [];
+
+    out.push("PALABRAS OCR: " +
+      rows.reduce((n, row) => n + row.words.length, 0));
+
+    out.push("FILAS OCR: " + rows.length);
+
+    if (dayRow) {
+      out.push(
+        "FILA DE DIAS DETECTADA: Y=" +
+        Math.round(dayRow.row.y) +
+        " | DIAS: " +
+        dayRow.days.map(item =>
+          item.day + "@X" + Math.round(item.x)
+        ).join("  ")
+      );
+    } else {
+      out.push("FILA DE DIAS DETECTADA: NO");
+      out.push("FILAS QUE PARECEN TENER NUMEROS:");
+
+      rows.forEach(row => {
+        const nums = [];
+
+        row.words.forEach(word => {
+          numbersIn(word.text).forEach(day => {
+            nums.push(day + "@X" + Math.round(word.x));
+          });
+        });
+
+        if (nums.length) {
+          out.push("Y=" + Math.round(row.y) + " | " + nums.join(" "));
+        }
+      });
+    }
+
+    if (result) {
+      out.push("PASAJEROS DETECTADOS: " +
+        result.passengers.length);
+
+      result.passengers.forEach((p, i) => {
+        out.push(
+          "PASAJERO " + (i + 1) +
+          " | Y=" + Math.round(p.row.y) +
+          " | " + p.name
+        );
+      });
+
+      out.push("HORARIOS DETECTADOS: " +
+        result.candidates.length);
+
+      result.candidates.slice(0, 80).forEach(c => {
+        out.push(
+          c.person + " | " + c.date + " | " + c.hours +
+          " | OCR: " + c.raw
+        );
+      });
+    }
+
+    out.push("");
+    out.push("FILAS OCR CON POSICIONES (Y / X):");
+
+    rows.slice(0, 45).forEach((row, i) => {
+      const parts = row.words.map(word =>
+        Math.round(word.x) + ":" + word.text
+      );
+
+      out.push(
+        "FILA " + (i + 1) +
+        " Y=" + Math.round(row.y) +
+        " | " + parts.join("  ")
+      );
+    });
+
+    if (rows.length > 45) {
+      out.push("... se omitieron " +
+        (rows.length - 45) + " filas adicionales.");
+    }
+
+    return out.join("\n");
   }
 
   async function scan(file, callback) {
@@ -452,43 +513,57 @@ window.LeoReader = (function () {
     const words = getWords(data);
     const rows = makeRows(words);
 
-    if (!rows.length) {
-      throw new Error(
-        "El OCR no pudo reconocer texto suficiente."
-      );
+    let dayRow = null;
+    let dates = [];
+    let result = null;
+
+    if (rows.length) {
+      dayRow = findDaysRow(rows);
+
+      if (dayRow) {
+        dates = getDateObjects(dayRow);
+
+        progress(callback, 88, "Buscando pasajeros...");
+
+        result = extract(rows, dayRow, dates);
+      }
     }
 
-    const dayRow = findDaysRow(rows);
+    const diagnostic = buildDiagnostic(
+      rows,
+      dayRow,
+      dates,
+      result
+    );
 
-    if (!dayRow) {
-      throw new Error(
-        "No pude identificar la fila de días del calendario."
-      );
-    }
+    const passengersCount = result
+      ? result.passengers.length
+      : 0;
 
-    const dates = getDateObjects(dayRow);
+    const candidatesCount = result
+      ? result.candidates.length
+      : 0;
 
-    progress(callback, 88, "Buscando pasajeros...");
-
-    const result = extract(rows, dayRow, dates);
-
-    progress(callback, 96, "Terminando lectura...");
+    progress(callback, 96, "Terminando diagnóstico...");
 
     progress(
       callback,
       100,
       "Análisis terminado: " +
-      result.passengers.length +
+      passengersCount +
       " pasajeros y " +
-      result.candidates.length +
+      candidatesCount +
       " horarios."
     );
 
     return {
-      candidates: result.candidates,
+      candidates: result ? result.candidates : [],
       dates,
-      text: fullText,
-      passengersFound: result.passengers.length
+      text:
+        fullText +
+        "\n\n========== DIAGNOSTICO GEOMETRICO ==========\n" +
+        diagnostic,
+      passengersFound: passengersCount
     };
   }
 
