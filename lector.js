@@ -1,7 +1,7 @@
 
 /* ==========================================
    TRANSPORTE LEO - LECTOR OCR
-   Lectura de todas las filas y diagnóstico
+   Corrección de detección de días y horarios
    ========================================== */
 
 window.LeoReader = (function () {
@@ -19,17 +19,6 @@ window.LeoReader = (function () {
       .replace(/[\u0300-\u036f]/g, "")
       .replace(/\s+/g, " ")
       .trim();
-  }
-
-  function showDiagnostic(text) {
-    const status = document.getElementById("status");
-
-    if (status) {
-      status.textContent =
-        "No se encontraron horarios.\n\n" +
-        "TEXTO QUE RECONOCIÓ EL OCR:\n\n" +
-        (text || "(El OCR no devolvió texto)").slice(0, 2500);
-    }
   }
 
   function loadImage(file) {
@@ -53,8 +42,8 @@ window.LeoReader = (function () {
 
   function prepareImage(image) {
     const scale = Math.min(3, Math.max(1.5, 2400 / image.width));
-
     const canvas = document.createElement("canvas");
+
     canvas.width = Math.round(image.width * scale);
     canvas.height = Math.round(image.height * scale);
 
@@ -74,7 +63,6 @@ window.LeoReader = (function () {
     return canvas;
   }
 
-  // OCR normal: no forzamos SPARSE_TEXT.
   async function recognize(canvas, callback) {
     if (!window.Tesseract) {
       throw new Error("No se cargó Tesseract OCR.");
@@ -113,7 +101,6 @@ window.LeoReader = (function () {
       }));
   }
 
-  // Agrupa palabras que pertenecen a una misma fila.
   function makeRows(words) {
     const sorted = words.slice().sort(
       (a, b) => a.y - b.y || a.x - b.x
@@ -154,27 +141,42 @@ window.LeoReader = (function () {
     return rows.sort((a, b) => a.y - b.y);
   }
 
+  // Acepta solamente números independientes.
+  // No confunde 6-18hs o 19-7hs con días.
   function numbersIn(text) {
-    const value = clean(text)
+    let value = clean(text)
       .replace(/[Oo]/g, "0")
       .replace(/[Il|]/g, "1");
 
-    return (value.match(/\d{1,2}/g) || [])
-      .map(Number)
-      .filter(number => number >= 1 && number <= 31);
+    value = value.replace(/^[^\d]+|[^\d]+$/g, "");
+
+    if (!/^\d{1,2}$/.test(value)) {
+      return [];
+    }
+
+    const number = Number(value);
+
+    if (number < 1 || number > 31) {
+      return [];
+    }
+
+    return [number];
   }
 
-  // Busca la fila que parece contener los días del mes.
+  // Busca la fila que más se parece a una secuencia de días.
   function findDaysRow(rows) {
     let best = null;
-    let bestScore = 0;
+    let bestScore = -Infinity;
 
     rows.forEach((row, index) => {
       const found = [];
 
       row.words.forEach(word => {
         numbersIn(word.text).forEach(day => {
-          found.push({ day, x: word.x });
+          found.push({
+            day,
+            x: word.x
+          });
         });
       });
 
@@ -192,12 +194,39 @@ window.LeoReader = (function () {
 
       if (unique.length < 3) return;
 
-      const score = unique.length * 10 +
-        (unique[unique.length - 1].x - unique[0].x) / 100;
+      let ascending = 0;
+      let repeated = 0;
+
+      for (let i = 1; i < unique.length; i++) {
+        const previous = unique[i - 1].day;
+        const current = unique[i].day;
+
+        if (current > previous) {
+          ascending++;
+        } else if (current === previous) {
+          repeated++;
+        } else if (previous >= 25 && current <= 5) {
+          ascending++;
+        }
+      }
+
+      const spread =
+        unique[unique.length - 1].x - unique[0].x;
+
+      const score =
+        unique.length * 8 +
+        ascending * 14 -
+        repeated * 8 +
+        spread / 150 -
+        index * 0.15;
 
       if (score > bestScore) {
         bestScore = score;
-        best = { index, row, days: unique };
+        best = {
+          index,
+          row,
+          days: unique
+        };
       }
     });
 
@@ -208,6 +237,7 @@ window.LeoReader = (function () {
     if (!values.length) return 80;
 
     const sorted = values.slice().sort((a, b) => a - b);
+
     return sorted[Math.floor(sorted.length / 2)];
   }
 
@@ -216,7 +246,10 @@ window.LeoReader = (function () {
 
     for (let i = 1; i < days.length; i++) {
       const distance = days[i].x - days[i - 1].x;
-      if (distance > 5) distances.push(distance);
+
+      if (distance > 5) {
+        distances.push(distance);
+      }
     }
 
     return median(distances);
@@ -261,7 +294,63 @@ window.LeoReader = (function () {
       String(date.day).padStart(2, "0");
   }
 
-  // Reconoce horarios aunque el OCR separe los números y el guion.
+  function getPassengers(rows, dayRow, dates) {
+    const spacing = getSpacing(dates);
+    const firstDayX = dates[0].x;
+    const nameLimit = firstDayX - spacing * 0.35;
+
+    const passengers = [];
+
+    rows.forEach(row => {
+      if (row.y <= dayRow.row.y) return;
+
+      const words = row.words.filter(
+        word => word.x < nameLimit
+      );
+
+      if (!words.length) return;
+
+      const name = clean(
+        words.map(word => word.text).join(" ")
+      )
+        .replace(/[^a-záéíóúñü\s.'-]/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (name.length < 3) return;
+
+      if (
+        /nombre|personal|horario|feriado|vacaciones|total|observaciones|turno/i.test(name)
+      ) return;
+
+      if (!/[a-záéíóúñ]/i.test(name)) return;
+
+      passengers.push({
+        name,
+        row
+      });
+    });
+
+    return passengers;
+  }
+
+  function getCell(row, dates, index) {
+    const spacing = getSpacing(dates);
+    const current = dates[index];
+
+    const left = index === 0
+      ? current.x - spacing * 0.55
+      : (dates[index - 1].x + current.x) / 2;
+
+    const right = index === dates.length - 1
+      ? current.x + spacing * 0.55
+      : (current.x + dates[index + 1].x) / 2;
+
+    return row.words.filter(word =>
+      word.x >= left && word.x < right
+    );
+  }
+
   function parseHours(text) {
     let value = clean(text).toLowerCase();
 
@@ -295,75 +384,33 @@ window.LeoReader = (function () {
     return null;
   }
 
-  // Detecta nombres a la izquierda de la primera columna de días.
-  function getPassengers(rows, dayRow, dates) {
-    const spacing = getSpacing(dates);
-    const firstDayX = dates[0].x;
-    const nameLimit = firstDayX - spacing * 0.35;
-
-    const passengers = [];
-
-    rows.forEach(row => {
-      if (row.y <= dayRow.row.y) return;
-
-      const words = row.words.filter(word => word.x < nameLimit);
-
-      if (!words.length) return;
-
-      const name = clean(words.map(word => word.text).join(" "))
-        .replace(/[^a-záéíóúñü\s.'-]/gi, " ")
-        .replace(/\s+/g, " ")
-        .trim();
-
-      if (name.length < 3) return;
-
-      if (
-        /nombre|personal|horario|feriado|vacaciones|total|observaciones|turno/i.test(name)
-      ) return;
-
-      if (!/[a-záéíóúñ]/i.test(name)) return;
-
-      passengers.push({ name, row });
-    });
-
-    return passengers;
-  }
-
-  function getCell(row, dates, index) {
-    const spacing = getSpacing(dates);
-    const current = dates[index];
-
-    const left = index === 0
-      ? current.x - spacing * 0.55
-      : (dates[index - 1].x + current.x) / 2;
-
-    const right = index === dates.length - 1
-      ? current.x + spacing * 0.55
-      : (current.x + dates[index + 1].x) / 2;
-
-    return row.words.filter(word =>
-      word.x >= left && word.x < right
-    );
-  }
-
   function extract(rows, dayRow, dates) {
     const passengers = getPassengers(rows, dayRow, dates);
     const candidates = [];
 
     passengers.forEach(passenger => {
       dates.forEach((date, index) => {
-        const cellWords = getCell(passenger.row, dates, index);
+        const cellWords = getCell(
+          passenger.row,
+          dates,
+          index
+        );
 
         if (!cellWords.length) return;
 
-        const raw = cellWords.map(word => word.text).join(" ");
+        const raw = cellWords
+          .map(word => word.text)
+          .join(" ");
+
         const hours = parseHours(raw);
 
         if (!hours) return;
 
         const confidence = Math.round(
-          cellWords.reduce((sum, word) => sum + word.confidence, 0) /
-          cellWords.length
+          cellWords.reduce(
+            (sum, word) => sum + word.confidence,
+            0
+          ) / cellWords.length
         );
 
         candidates.push({
@@ -380,7 +427,10 @@ window.LeoReader = (function () {
       });
     });
 
-    return { passengers, candidates };
+    return {
+      passengers,
+      candidates
+    };
   }
 
   async function scan(file, callback) {
@@ -392,7 +442,7 @@ window.LeoReader = (function () {
 
     const canvas = prepareImage(image);
 
-    progress(callback, 30, "Leyendo texto con OCR normal...");
+    progress(callback, 30, "Leyendo texto con OCR...");
 
     const data = await recognize(canvas, callback);
     const fullText = data.text || "";
@@ -403,18 +453,16 @@ window.LeoReader = (function () {
     const rows = makeRows(words);
 
     if (!rows.length) {
-      showDiagnostic(fullText);
       throw new Error(
-        "El OCR no pudo reconocer texto suficiente. Revisá el diagnóstico que aparece en pantalla."
+        "El OCR no pudo reconocer texto suficiente."
       );
     }
 
     const dayRow = findDaysRow(rows);
 
     if (!dayRow) {
-      showDiagnostic(fullText);
       throw new Error(
-        "No pude identificar la fila de días. Revisá el texto reconocido que aparece en pantalla."
+        "No pude identificar la fila de días del calendario."
       );
     }
 
@@ -426,16 +474,14 @@ window.LeoReader = (function () {
 
     progress(callback, 96, "Terminando lectura...");
 
-    if (!result.candidates.length) {
-      showDiagnostic(fullText);
-    }
-
     progress(
       callback,
       100,
       "Análisis terminado: " +
-      result.passengers.length + " pasajeros y " +
-      result.candidates.length + " horarios."
+      result.passengers.length +
+      " pasajeros y " +
+      result.candidates.length +
+      " horarios."
     );
 
     return {
