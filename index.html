@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Leo App - Cronogramas</title>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,sans-serif;background:#edf2f7;color:#172033}
@@ -23,7 +22,7 @@ button.green{background:#159b58;color:white;border:0}
 button:disabled{opacity:.5}
 .full{width:100%;margin-top:8px}
 input,select{padding:11px;border:1px solid #cbd5df;border-radius:9px;font-size:15px;max-width:100%}
-#status{padding:12px;background:#edf7fc;border-radius:10px;color:#246d91;margin-top:10px;white-space:pre-wrap}
+#status{padding:12px;background:#edf7fc;border-radius:10px;color:#246d91;margin-top:10px;white-space:pre-wrap;overflow-wrap:anywhere}
 progress{width:100%;height:15px;margin-top:8px}
 .tabs{display:flex;gap:7px;margin:12px 0}
 .tabs button{flex:1}
@@ -42,9 +41,7 @@ td input{width:100%;min-width:65px;padding:6px}
 .daygrid .hasdata{border:2px solid #159b58}
 </style>
 </head>
-
 <body>
-
 <header>
 <div class="logo">🚌</div>
 <div>
@@ -52,235 +49,153 @@ td input{width:100%;min-width:65px;padding:6px}
 <small>Escáner OCR de cronogramas</small>
 </div>
 </header>
-
 <main>
-
 <section class="panel">
 <h3>📷 Escanear cronograma</h3>
-<p class="muted">
-Sacá una foto o elegí una o varias imágenes.
-Leo App intentará detectar automáticamente
-los meses, días, nombres y horarios.
-</p>
-
+<p class="muted">Sacá una foto o elegí una o varias imágenes. Leo App intentará detectar automáticamente los meses, días, nombres y horarios.</p>
 <div class="actions">
-<button type="button" class="green"
-onclick="document.getElementById('cameraInput').click()">
-📸 Sacar foto
-</button>
-
-<button type="button" class="primary"
-onclick="document.getElementById('files').click()">
-🖼️ Elegir de galería
-</button>
+<button type="button" class="green" onclick="document.getElementById('cameraInput').click()">📸 Sacar foto</button>
+<button type="button" class="primary" onclick="document.getElementById('files').click()">🖼️ Elegir de galería</button>
 </div>
-
 <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
 <input id="files" type="file" accept="image/*" multiple hidden>
-
 <img id="preview" alt="Vista previa">
-<div id="selectedInfo" class="muted">
-Todavía no seleccionaste imágenes.
-</div>
-
-<button id="scanBtn" class="primary full">
-🔍 Leer cronograma automáticamente
-</button>
-
+<div id="selectedInfo" class="muted">Todavía no seleccionaste imágenes.</div>
+<button id="scanBtn" class="primary full">🔍 Leer cronograma automáticamente</button>
 <progress id="progress" value="0" max="100"></progress>
 <div id="status">Esperando una imagen.</div>
 </section>
-
 <section class="panel">
 <h3>📅 Calendario</h3>
-
 <div class="tabs">
 <button class="active" data-mode="day">Día</button>
 <button data-mode="week">Semana</button>
 <button data-mode="month">Mes</button>
 </div>
-
 <input type="date" id="calendarDate" class="full">
 <div id="calendarGrid" class="daygrid"></div>
 <p id="calendarInfo" class="muted"></p>
 </section>
-
 <section class="panel">
 <h3>📝 Revisar horarios detectados</h3>
-<p class="muted">
-Corregí nombres, fechas u horarios.
-Solo se guardan los registros que confirmes.
-</p>
-
-<div id="review">
-<p class="muted">Todavía no hay resultados.</p>
-</div>
-
-<button id="saveBtn" class="green full">
-Guardar horarios confirmados
-</button>
+<p class="muted">Corregí nombres, fechas u horarios. Solo se guardan los registros que confirmes.</p>
+<div id="review"><p class="muted">Todavía no hay resultados.</p></div>
+<button id="saveBtn" class="green full">Guardar horarios confirmados</button>
 </section>
-
 <section class="panel">
 <h3>📋 Planilla de personal</h3>
 <div id="records"></div>
-
 <div class="actions">
 <button id="csvBtn">Exportar CSV</button>
 <button id="backupBtn">Respaldo JSON</button>
 <button id="clearBtn">Borrar datos</button>
 </div>
 </section>
-
 </main>
-
 <script src="./lector.js"></script>
-
 <script>
 const $=id=>document.getElementById(id);
-
 let candidates=[];
 let records=[];
 let calendarMode="day";
 let selectedFiles=[];
+try{records=JSON.parse(localStorage.getItem("leo_records")||"[]");}
+catch(e){records=[];}
 
-try{
-records=JSON.parse(localStorage.getItem("leo_records")||"[]");
-}catch(e){
-records=[];
-}
-
-function saveStorage(){
-localStorage.setItem("leo_records",JSON.stringify(records));
-}
-
-function message(text){
-$("status").textContent=text;
-}
+function saveStorage(){localStorage.setItem("leo_records",JSON.stringify(records));}
+function message(text){$("status").textContent=text;}
 
 function setSelectedFiles(files){
 selectedFiles=Array.from(files||[]);
 $("preview").style.display="none";
-
 if(!selectedFiles.length){
 $("selectedInfo").textContent="Todavía no seleccionaste imágenes.";
 return;
 }
-
-$("selectedInfo").textContent=
-selectedFiles.length+" imagen(es) lista(s) para analizar.";
-
+$("selectedInfo").textContent=selectedFiles.length+" imagen(es) lista(s) para analizar.";
 $("preview").src=URL.createObjectURL(selectedFiles[0]);
 $("preview").style.display="block";
-
 message("Imagen cargada. Lista para analizar.");
 }
 
 $("cameraInput").addEventListener("change",()=>{
-if($("cameraInput").files.length){
-setSelectedFiles($("cameraInput").files);
-}
+if($("cameraInput").files.length)setSelectedFiles($("cameraInput").files);
 $("cameraInput").value="";
 });
-
 $("files").addEventListener("change",()=>{
-if($("files").files.length){
-setSelectedFiles($("files").files);
-}
+if($("files").files.length)setSelectedFiles($("files").files);
 $("files").value="";
 });
 
 $("scanBtn").addEventListener("click",async()=>{
-
 if(!selectedFiles.length){
 message("Primero sacá una foto o elegí una imagen de la galería.");
 return;
 }
-
 candidates=[];
+let diagnosticText="";
+let diagnosticErrors=[];
 $("review").innerHTML="";
 $("progress").value=0;
 $("scanBtn").disabled=true;
 
 try{
-
 for(let i=0;i<selectedFiles.length;i++){
-
 message("Analizando imagen "+(i+1)+" de "+selectedFiles.length+"...");
-
-const result=await LeoReader.scan(
-selectedFiles[i],
-(percent,text)=>{
+try{
+const result=await LeoReader.scan(selectedFiles[i],(percent,text)=>{
 $("progress").value=percent;
 message(text);
-}
-);
-
+});
 if(result&&Array.isArray(result.candidates)){
 candidates.push(...result.candidates);
 }
+if(result&&result.text){
+diagnosticText+="\n\nIMAGEN "+(i+1)+":\n"+result.text;
 }
-
+}catch(error){
+diagnosticErrors.push("Imagen "+(i+1)+": "+error.message);
+}
+}
 renderReview();
-
-message(
-"Análisis terminado. Se encontraron "+
-candidates.length+
-" posibles horarios. Revisalos antes de guardar."
-);
-
 $("progress").value=100;
 
+if(candidates.length){
+message("Análisis terminado. Se encontraron "+candidates.length+" posibles horarios. Revisalos antes de guardar.");
+}else{
+message(
+"ANÁLISIS TERMINADO: 0 HORARIOS.\n\n"+
+"ERRORES:\n"+(diagnosticErrors.join("\n")||"Ninguno")+
+"\n\nTEXTO RECONOCIDO POR OCR:\n\n"+
+(diagnosticText.trim().slice(0,3500)||"El OCR no devolvió texto.")
+);
+}
 }catch(error){
-
 message("Error de lectura: "+error.message);
-
 }finally{
-
 $("scanBtn").disabled=false;
-
 }
 });
 
 function escapeHTML(value){
 return String(value??"").replace(/[&<>"']/g,c=>({
-"&":"&amp;",
-"<":"&lt;",
-">":"&gt;",
-'"':"&quot;",
-"'":"&#39;"
+"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
 }[c]));
 }
 
 function renderReview(){
-
 if(!candidates.length){
 $("review").innerHTML="<p>No se encontraron horarios.</p>";
 return;
 }
-
 let html="<div style='overflow-x:auto'><table>";
 html+="<tr><th>Nombre</th><th>Fecha</th><th>Horario</th><th>Estado</th></tr>";
-
 candidates.forEach((item,i)=>{
-
 html+=`
 <tr>
-<td>
-<input data-i="${i}" data-field="person"
-value="${escapeHTML(item.person)}">
-</td>
-
-<td>
-<input data-i="${i}" data-field="date"
-type="date" value="${escapeHTML(item.date||"")}">
-</td>
-
-<td>
-<input data-i="${i}" data-field="hours"
-value="${escapeHTML(item.hours)}">
-</td>
-
+<td><input data-i="${i}" data-field="person" value="${escapeHTML(item.person)}"></td>
+<td><input data-i="${i}" data-field="date" type="date" value="${escapeHTML(item.date||"")}"></td>
+<td><input data-i="${i}" data-field="hours" value="${escapeHTML(item.hours)}"></td>
 <td>
 <select data-i="${i}" data-field="status">
 <option value="pendiente" ${item.status==="pendiente"?"selected":""}>Pendiente</option>
@@ -291,228 +206,121 @@ value="${escapeHTML(item.hours)}">
 </td>
 </tr>`;
 });
-
 html+="</table></div>";
-
 $("review").innerHTML=html;
-
 $("review").querySelectorAll("[data-i]").forEach(el=>{
 el.addEventListener("change",()=>{
 const i=Number(el.dataset.i);
 candidates[i][el.dataset.field]=el.value;
 });
 });
-
 }
 
 $("saveBtn").addEventListener("click",()=>{
-
 let saved=0;
-
 candidates.forEach(item=>{
-
-if(item.status!=="confirmado")return;
-if(!item.person||!item.date||!item.hours)return;
-
+if(item.status!=="confirmado"||!item.person||!item.date||!item.hours)return;
 const existing=records.findIndex(r=>
-r.person.toLowerCase()===item.person.toLowerCase()&&
-r.date===item.date
+r.person.toLowerCase()===item.person.toLowerCase()&&r.date===item.date
 );
-
-const entry={
-person:item.person.trim(),
-date:item.date,
-hours:item.hours.trim()
-};
-
-if(existing>=0){
-records[existing]=entry;
-}else{
-records.push(entry);
-}
-
+const entry={person:item.person.trim(),date:item.date,hours:item.hours.trim()};
+if(existing>=0)records[existing]=entry;
+else records.push(entry);
 saved++;
-
 });
-
 saveStorage();
 renderRecords();
 renderCalendar();
-
 message("Se guardaron "+saved+" horarios confirmados.");
-
 });
 
 function renderRecords(){
-
-const filtered=records.slice().sort((a,b)=>
-a.date.localeCompare(b.date)||
-a.hours.localeCompare(b.hours)
-);
-
+const filtered=records.slice().sort((a,b)=>a.date.localeCompare(b.date)||a.hours.localeCompare(b.hours));
 if(!filtered.length){
 $("records").innerHTML="<p class='muted'>No hay horarios guardados.</p>";
 return;
 }
-
 $("records").innerHTML=filtered.map(r=>`
 <div class="entry">
 <strong>${escapeHTML(r.person)}</strong>
 <div>${escapeHTML(r.date)} · ${escapeHTML(r.hours)} hs</div>
-</div>
-`).join("");
-
+</div>`).join("");
 }
 
 function renderCalendar(){
-
 const value=$("calendarDate").value;
 if(!value)return;
-
 const selected=new Date(value+"T12:00:00");
 let filtered=records;
-
-if(calendarMode==="day"){
-filtered=records.filter(r=>r.date===value);
-}
-
+if(calendarMode==="day")filtered=records.filter(r=>r.date===value);
 if(calendarMode==="week"){
-
 const start=new Date(selected);
 const weekday=(start.getDay()+6)%7;
 start.setDate(start.getDate()-weekday);
-
 const end=new Date(start);
 end.setDate(end.getDate()+7);
-
 filtered=records.filter(r=>{
 const d=new Date(r.date+"T12:00:00");
 return d>=start&&d<end;
 });
-
 }
-
+if(calendarMode==="month")filtered=records.filter(r=>r.date.slice(0,7)===value.slice(0,7));
+$("calendarInfo").textContent=filtered.length+" horarios para la vista seleccionada.";
 if(calendarMode==="month"){
-filtered=records.filter(r=>
-r.date.slice(0,7)===value.slice(0,7)
-);
-}
-
-$("calendarInfo").textContent=
-filtered.length+" horarios para la vista seleccionada.";
-
-if(calendarMode==="month"){
-
-const year=selected.getFullYear();
-const month=selected.getMonth();
+const year=selected.getFullYear(),month=selected.getMonth();
 const first=new Date(year,month,1);
 const count=new Date(year,month+1,0).getDate();
-
-let html=["L","M","M","J","V","S","D"]
-.map(d=>`<div>${d}</div>`).join("");
-
-for(let i=0;i<(first.getDay()+6)%7;i++){
-html+="<div></div>";
-}
-
+let html=["L","M","M","J","V","S","D"].map(d=>`<div>${d}</div>`).join("");
+for(let i=0;i<(first.getDay()+6)%7;i++)html+="<div></div>";
 for(let d=1;d<=count;d++){
-
-const date=year+"-"+
-String(month+1).padStart(2,"0")+"-"+
-String(d).padStart(2,"0");
-
+const date=year+"-"+String(month+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
 const has=records.some(r=>r.date===date);
-
 html+=`<div class="${has?"hasdata":""}">${d}</div>`;
-
 }
-
 $("calendarGrid").innerHTML=html;
-
 }else{
-
 $("calendarGrid").innerHTML="";
-
 }
-
-$("calendarInfo").textContent+=filtered.length
-?" · "+filtered.map(r=>r.person+" ("+r.hours+")").join(", ")
-:"";
-
+$("calendarInfo").textContent+=" · "+(filtered.length?filtered.map(r=>r.person+" ("+r.hours+")").join(", "):"Sin horarios");
 }
 
 document.querySelectorAll("[data-mode]").forEach(btn=>{
-
 btn.addEventListener("click",()=>{
-
 calendarMode=btn.dataset.mode;
-
-document.querySelectorAll("[data-mode]").forEach(b=>
-b.classList.toggle("active",b===btn)
-);
-
+document.querySelectorAll("[data-mode]").forEach(b=>b.classList.toggle("active",b===btn));
 renderCalendar();
-
 });
-
 });
 
 $("calendarDate").value=new Date().toISOString().slice(0,10);
 $("calendarDate").addEventListener("change",renderCalendar);
 
 $("csvBtn").addEventListener("click",()=>{
-
-const lines=[
-["Pasajero","Fecha","Horario"],
-...records.map(r=>[r.person,r.date,r.hours])
-];
-
-const csv=lines.map(row=>
-row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(";")
-).join("\n");
-
+const lines=[["Pasajero","Fecha","Horario"],...records.map(r=>[r.person,r.date,r.hours])];
+const csv=lines.map(row=>row.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(";")).join("\n");
 downloadFile("\uFEFF"+csv,"leo-cronogramas.csv","text/csv;charset=utf-8");
-
 });
-
 $("backupBtn").addEventListener("click",()=>{
-
-downloadFile(
-JSON.stringify(records,null,2),
-"leo-respaldo.json",
-"application/json"
-);
-
+downloadFile(JSON.stringify(records,null,2),"leo-respaldo.json","application/json");
 });
-
 $("clearBtn").addEventListener("click",()=>{
-
 if(!confirm("¿Borrar todos los horarios guardados?"))return;
-
 records=[];
 saveStorage();
 renderRecords();
 renderCalendar();
-
 });
-
 function downloadFile(content,name,type){
-
 const blob=new Blob([content],{type});
 const url=URL.createObjectURL(blob);
 const a=document.createElement("a");
-
 a.href=url;
 a.download=name;
 a.click();
-
 URL.revokeObjectURL(url);
-
 }
-
 renderRecords();
 renderCalendar();
-
 </script>
 </body>
 </html>
