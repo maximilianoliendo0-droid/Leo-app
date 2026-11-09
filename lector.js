@@ -1,26 +1,17 @@
 
 /* ==========================================
-   LEO APP - LECTOR OCR UNIVERSAL
-   Compatible con index.html actual
+   LEO APP - LECTOR OCR MEJORADO
+   Una fila por pasajero / una columna por día
    ========================================== */
 
 window.LeoReader = (function () {
   "use strict";
 
   const MONTHS = {
-    enero: 0,
-    febrero: 1,
-    marzo: 2,
-    abril: 3,
-    mayo: 4,
-    junio: 5,
-    julio: 6,
-    agosto: 7,
-    septiembre: 8,
-    setiembre: 8,
-    octubre: 9,
-    noviembre: 10,
-    diciembre: 11
+    enero: 0, febrero: 1, marzo: 2, abril: 3,
+    mayo: 4, junio: 5, julio: 6, agosto: 7,
+    septiembre: 8, setiembre: 8,
+    octubre: 9, noviembre: 10, diciembre: 11
   };
 
   function clean(text) {
@@ -31,14 +22,14 @@ window.LeoReader = (function () {
       .trim();
   }
 
-  function report(progress, value, text) {
+  function report(progress, value, message) {
     if (typeof progress === "function") {
-      progress(value, text);
+      progress(value, message);
     }
   }
 
   // ------------------------------------------
-  // CARGA Y RECORTE DE IMAGEN
+  // ABRIR IMAGEN
   // ------------------------------------------
 
   function loadImage(file) {
@@ -60,146 +51,61 @@ window.LeoReader = (function () {
     });
   }
 
-  function cropBlackMargins(image) {
+  // ------------------------------------------
+  // PREPARAR IMAGEN
+  // ------------------------------------------
+
+  function prepareOCR(image) {
+    const scale = Math.min(
+      3,
+      Math.max(1.5, 2400 / image.width)
+    );
+
     const canvas = document.createElement("canvas");
-    canvas.width = image.width;
-    canvas.height = image.height;
+    canvas.width = Math.round(image.width * scale);
+    canvas.height = Math.round(image.height * scale);
 
     const ctx = canvas.getContext("2d", {
       willReadFrequently: true
     });
 
-    ctx.drawImage(image, 0, 0);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.drawImage(
+      image,
+      0, 0, image.width, image.height,
+      0, 0, canvas.width, canvas.height
+    );
 
     const data = ctx.getImageData(
       0, 0, canvas.width, canvas.height
-    ).data;
-
-    const width = canvas.width;
-    const height = canvas.height;
-
-    const rowHasContent = y => {
-      let count = 0;
-
-      for (let x = 0; x < width; x += 3) {
-        const i = (y * width + x) * 4;
-
-        const brightness =
-          (data[i] + data[i + 1] + data[i + 2]) / 3;
-
-        if (brightness > 35) count++;
-      }
-
-      return count / Math.ceil(width / 3) > 0.025;
-    };
-
-    const colHasContent = x => {
-      let count = 0;
-
-      for (let y = 0; y < height; y += 3) {
-        const i = (y * width + x) * 4;
-
-        const brightness =
-          (data[i] + data[i + 1] + data[i + 2]) / 3;
-
-        if (brightness > 35) count++;
-      }
-
-      return count / Math.ceil(height / 3) > 0.025;
-    };
-
-    let top = 0;
-    let bottom = height - 1;
-    let left = 0;
-    let right = width - 1;
-
-    while (top < bottom && !rowHasContent(top)) top++;
-    while (bottom > top && !rowHasContent(bottom)) bottom--;
-
-    while (left < right && !colHasContent(left)) left++;
-    while (right > left && !colHasContent(right)) right--;
-
-    const margin = 5;
-
-    top = Math.max(0, top - margin);
-    left = Math.max(0, left - margin);
-    bottom = Math.min(height - 1, bottom + margin);
-    right = Math.min(width - 1, right + margin);
-
-    const output = document.createElement("canvas");
-
-    output.width = right - left + 1;
-    output.height = bottom - top + 1;
-
-    output.getContext("2d").drawImage(
-      image,
-      left, top,
-      output.width, output.height,
-      0, 0,
-      output.width, output.height
     );
 
-    return output;
-  }
-
-  // ------------------------------------------
-  // MEJORAR CONTRASTE SIN DEPENDER DEL COLOR
-  // ------------------------------------------
-
-  function prepareOCR(canvas) {
-    const scale = Math.min(
-      3,
-      Math.max(1, 1800 / canvas.width)
-    );
-
-    const output = document.createElement("canvas");
-
-    output.width = Math.round(canvas.width * scale);
-    output.height = Math.round(canvas.height * scale);
-
-    const ctx = output.getContext("2d", {
-      willReadFrequently: true
-    });
-
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, output.width, output.height);
-
-    ctx.drawImage(
-      canvas,
-      0, 0, canvas.width, canvas.height,
-      0, 0, output.width, output.height
-    );
-
-    const imageData = ctx.getImageData(
-      0, 0, output.width, output.height
-    );
-
-    const pixels = imageData.data;
+    const pixels = data.data;
 
     for (let i = 0; i < pixels.length; i += 4) {
       const gray =
-        0.299 * pixels[i] +
-        0.587 * pixels[i + 1] +
-        0.114 * pixels[i + 2];
+        pixels[i] * 0.299 +
+        pixels[i + 1] * 0.587 +
+        pixels[i + 2] * 0.114;
 
-      // Mantener información de texto sin depender del color.
-      const enhanced = Math.max(
+      const value = Math.max(
         0,
-        Math.min(255, (gray - 125) * 1.45 + 128)
+        Math.min(255, (gray - 125) * 1.5 + 128)
       );
 
-      pixels[i] = enhanced;
-      pixels[i + 1] = enhanced;
-      pixels[i + 2] = enhanced;
+      pixels[i] = value;
+      pixels[i + 1] = value;
+      pixels[i + 2] = value;
     }
 
-    ctx.putImageData(imageData, 0, 0);
-
-    return output;
+    ctx.putImageData(data, 0, 0);
+    return canvas;
   }
 
   // ------------------------------------------
-  // OCR
+  // RECONOCIMIENTO OCR
   // ------------------------------------------
 
   async function recognize(canvas, progress) {
@@ -211,27 +117,22 @@ window.LeoReader = (function () {
 
     try {
       await worker.setParameters({
-        preserve_interword_spaces: "1"
+        preserve_interword_spaces: "1",
+        tessedit_pageseg_mode: Tesseract.PSM.SPARSE_TEXT
       });
 
-      const result = await worker.recognize(canvas, {}, {
-        text: true,
-        blocks: true,
-        hocr: false,
-        tsv: false
-      });
+      const result = await worker.recognize(canvas);
 
       report(progress, 75, "Texto reconocido.");
 
       return result.data;
-
     } finally {
       await worker.terminate();
     }
   }
 
   // ------------------------------------------
-  // OBTENER PALABRAS Y COORDENADAS
+  // OBTENER PALABRAS Y POSICIONES
   // ------------------------------------------
 
   function getWords(data) {
@@ -245,45 +146,56 @@ window.LeoReader = (function () {
         x1: w.bbox.x1,
         y0: w.bbox.y0,
         y1: w.bbox.y1,
+        height: Math.max(1, w.bbox.y1 - w.bbox.y0),
         confidence: w.confidence || 0
       }));
   }
 
   // ------------------------------------------
-  // AGRUPAR TEXTO POR FILAS
+  // AGRUPAR PALABRAS EN FILAS
   // ------------------------------------------
 
   function clusterRows(words) {
-    const sorted = words.slice().sort((a, b) => a.y - b.y);
+    const sorted = words.slice().sort((a, b) => {
+      return a.y - b.y || a.x - b.x;
+    });
+
     const rows = [];
 
     sorted.forEach(word => {
-      let best = null;
-      let distance = Infinity;
+      let selected = null;
+      let bestDistance = Infinity;
 
       rows.forEach(row => {
-        const d = Math.abs(row.y - word.y);
         const tolerance = Math.max(
-          8,
-          (word.y1 - word.y0) * 0.65
+          10,
+          Math.min(24, word.height * 0.8)
         );
 
-        if (d < tolerance && d < distance) {
-          best = row;
-          distance = d;
+        const distance = Math.abs(row.y - word.y);
+
+        if (
+          distance <= tolerance &&
+          distance < bestDistance
+        ) {
+          selected = row;
+          bestDistance = distance;
         }
       });
 
-      if (!best) {
-        best = { y: word.y, words: [] };
-        rows.push(best);
+      if (!selected) {
+        selected = {
+          y: word.y,
+          words: []
+        };
+        rows.push(selected);
       }
 
-      best.words.push(word);
+      selected.words.push(word);
 
-      best.y = best.words.reduce(
-        (sum, w) => sum + w.y, 0
-      ) / best.words.length;
+      selected.y = selected.words.reduce(
+        (sum, item) => sum + item.y, 0
+      ) / selected.words.length;
     });
 
     rows.forEach(row => {
@@ -294,7 +206,7 @@ window.LeoReader = (function () {
   }
 
   // ------------------------------------------
-  // EXTRAER NÚMEROS DE DÍAS
+  // DETECTAR NÚMEROS
   // ------------------------------------------
 
   function extractNumbers(text) {
@@ -302,12 +214,14 @@ window.LeoReader = (function () {
       .replace(/[Oo]/g, "0")
       .replace(/[Il|]/g, "1");
 
-    const matches = value.match(/\d{1,2}/g) || [];
-
-    return matches
+    return (value.match(/\d{1,2}/g) || [])
       .map(Number)
       .filter(n => n >= 1 && n <= 31);
   }
+
+  // ------------------------------------------
+  // ENCONTRAR FILA DE DÍAS
+  // ------------------------------------------
 
   function findDateRow(rows) {
     let best = null;
@@ -317,9 +231,7 @@ window.LeoReader = (function () {
       const found = [];
 
       row.words.forEach(word => {
-        const numbers = extractNumbers(word.text);
-
-        numbers.forEach(day => {
+        extractNumbers(word.text).forEach(day => {
           found.push({
             day,
             x: word.x,
@@ -328,23 +240,31 @@ window.LeoReader = (function () {
         });
       });
 
-      // Evitar que números repetidos de horarios
-      // se consideren una fila de fechas.
-      const unique = [];
-
       found.sort((a, b) => a.x - b.x);
 
-      found.forEach(item => {
-        const duplicate = unique.some(
-          u => Math.abs(u.x - item.x) < 12
-        );
+      const unique = [];
 
-        if (!duplicate) unique.push(item);
+      found.forEach(item => {
+        const previous = unique[unique.length - 1];
+
+        if (
+          !previous ||
+          Math.abs(item.x - previous.x) > 8
+        ) {
+          unique.push(item);
+        }
       });
 
-      const score = unique.length;
+      if (unique.length < 3) return;
 
-      if (score >= 3 && score > bestScore) {
+      const spread =
+        unique[unique.length - 1].x - unique[0].x;
+
+      // Favorece una fila de días distribuida
+      // horizontalmente por el cronograma.
+      const score = unique.length * 10 + spread / 100;
+
+      if (score > bestScore) {
         bestScore = score;
         best = {
           index,
@@ -365,14 +285,12 @@ window.LeoReader = (function () {
     const result = [];
 
     rows.forEach(row => {
-      // Los meses suelen aparecer por encima
-      // de la fila numérica.
-      if (row.y > dateRow.row.y) return;
+      if (row.y >= dateRow.row.y) return;
 
       row.words.forEach(word => {
         const value = clean(word.text).toLowerCase();
 
-        for (const name of Object.keys(MONTHS)) {
+        Object.keys(MONTHS).forEach(name => {
           if (value.includes(name)) {
             const yearMatch = value.match(/20\d{2}/);
 
@@ -382,7 +300,7 @@ window.LeoReader = (function () {
               x: word.x
             });
           }
-        }
+        });
       });
     });
 
@@ -390,23 +308,19 @@ window.LeoReader = (function () {
   }
 
   // ------------------------------------------
-  // ASOCIAR DÍAS CON MESES Y AÑOS
+  // CONSTRUIR FECHAS
   // ------------------------------------------
 
   function buildDates(dateRow, months) {
-    const dateWords = dateRow.words
-      .slice()
-      .sort((a, b) => a.x - b.x);
+    const current = new Date();
+
+    let currentMonth = current.getMonth();
+    let currentYear = current.getFullYear();
+    let previousDay = null;
 
     const result = [];
 
-    let currentMonth = null;
-    let currentYear = null;
-    let previousDay = null;
-
-    const currentDate = new Date();
-
-    dateWords.forEach(word => {
+    dateRow.words.forEach(word => {
       let nearest = null;
       let distance = Infinity;
 
@@ -414,14 +328,12 @@ window.LeoReader = (function () {
         const d = Math.abs(month.x - word.x);
 
         if (d < distance) {
-          distance = d;
           nearest = month;
+          distance = d;
         }
       });
 
-      // Si hay meses detectados, se usa la posición
-      // del encabezado para elegir el mes.
-      if (nearest && distance < 500) {
+      if (nearest && distance < 600) {
         currentMonth = nearest.month;
 
         if (nearest.year) {
@@ -431,19 +343,11 @@ window.LeoReader = (function () {
 
       const day = word.day;
 
-      if (currentMonth === null) {
-        currentMonth = currentDate.getMonth();
-      }
-
-      if (currentYear === null) {
-        currentYear = currentDate.getFullYear();
-      }
-
       if (
         previousDay !== null &&
         day < previousDay &&
-        day <= 5 &&
-        previousDay >= 25
+        previousDay >= 25 &&
+        day <= 5
       ) {
         currentMonth++;
 
@@ -467,69 +371,67 @@ window.LeoReader = (function () {
   }
 
   // ------------------------------------------
-  // RECONOCER HORARIOS
+  // CALCULAR DISTANCIA ENTRE COLUMNAS
   // ------------------------------------------
 
-  function parseHours(text) {
-    const value = clean(text)
-      .toLowerCase()
-      .replace(/hs?/g, "")
-      .replace(/[–—]/g, "-")
-      .replace(/\s/g, "");
+  function getColumnSpacing(dates) {
+    if (dates.length < 2) return 80;
 
-    const match = value.match(
-      /(?:^|[^0-9])([0-2]?\d)-([0-2]?\d)(?:$|[^0-9])/
-    );
+    const distances = [];
 
-    if (!match) return null;
+    for (let i = 1; i < dates.length; i++) {
+      const distance = dates[i].x - dates[i - 1].x;
 
-    const start = Number(match[1]);
-    const end = Number(match[2]);
+      if (distance > 5) {
+        distances.push(distance);
+      }
+    }
 
-    if (start > 23 || end > 23) return null;
+    if (!distances.length) return 80;
 
-    return {
-      hours: start + "-" + end,
-      status: "pendiente"
-    };
+    distances.sort((a, b) => a - b);
+
+    return distances[Math.floor(distances.length / 2)];
   }
 
   // ------------------------------------------
-  // NOMBRES Y CELDAS
+  // IDENTIFICAR PASAJEROS
   // ------------------------------------------
 
   function getPeople(rows, dateRow, dates) {
     if (!dates.length) return [];
 
+    const spacing = getColumnSpacing(dates);
+
+    // Límite entre la columna de nombres
+    // y la primera columna de días.
     const firstDateX = dates[0].x;
-
-    const spacing = dates.length > 1
-      ? Math.abs(dates[1].x - dates[0].x)
-      : 80;
-
-    const nameLimit = firstDateX - spacing * 0.35;
+    const nameLimit = firstDateX - spacing * 0.45;
 
     const people = [];
 
     rows.forEach(row => {
       if (row.y <= dateRow.row.y) return;
 
-      const nameWords = row.words.filter(
-        w => w.x < nameLimit
-      );
+      const nameWords = row.words.filter(word => {
+        return word.x < nameLimit;
+      });
 
       if (!nameWords.length) return;
 
       const name = clean(
-        nameWords.map(w => w.text).join(" ")
-      );
+        nameWords.map(word => word.text).join(" ")
+      )
+        .replace(/^[^a-záéíóúñ]+/i, "")
+        .replace(/[^a-záéíóúñ\s.'-]/gi, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 
-      if (name.length < 4) return;
-
+      if (name.length < 3) return;
       if (!/[a-záéíóúñ]/i.test(name)) return;
 
       if (
-        /feriado|vacaciones|nuevos equipos|nombre|personal/i.test(name)
+        /feriado|vacaciones|nuevos equipos|nombre|personal|horario|total|observaciones/i.test(name)
       ) return;
 
       people.push({
@@ -541,33 +443,82 @@ window.LeoReader = (function () {
     return people;
   }
 
+  // ------------------------------------------
+  // OBTENER PALABRAS DE UNA CELDA
+  // ------------------------------------------
+
   function getCellWords(row, dates, index) {
+    const spacing = getColumnSpacing(dates);
     const current = dates[index];
-    const previous = dates[index - 1];
-    const next = dates[index + 1];
 
-    const left = previous
-      ? (previous.x + current.x) / 2
-      : current.x - 100;
+    const left = index === 0
+      ? current.x - spacing * 0.5
+      : (dates[index - 1].x + current.x) / 2;
 
-    const right = next
-      ? (current.x + next.x) / 2
-      : current.x + 100;
+    const right = index === dates.length - 1
+      ? current.x + spacing * 0.5
+      : (current.x + dates[index + 1].x) / 2;
 
-    return row.words.filter(w =>
-      w.x >= left && w.x < right
+    return row.words.filter(word => {
+      return word.x >= left && word.x < right;
+    });
+  }
+
+  // ------------------------------------------
+  // INTERPRETAR HORARIOS
+  // ------------------------------------------
+
+  function parseHours(text) {
+    let value = clean(text).toLowerCase();
+
+    value = value
+      .replace(/[–—−]/g, "-")
+      .replace(/[o]/g, "0")
+      .replace(/[il|]/g, "1")
+      .replace(/horas?/g, "")
+      .replace(/hs?/g, "")
+      .replace(/\s+/g, "");
+
+    const matches = value.match(
+      /(?:^|[^0-9])([0-2]?\d)-([0-2]?\d)(?=$|[^0-9])/g
+    );
+
+    if (!matches) return null;
+
+    for (const item of matches) {
+      const numbers = item.match(/(\d{1,2})-(\d{1,2})/);
+
+      if (!numbers) continue;
+
+      const start = Number(numbers[1]);
+      const end = Number(numbers[2]);
+
+      if (start > 23 || end > 23) continue;
+
+      return {
+        hours: start + "-" + end,
+        status: "pendiente"
+      };
+    }
+
+    return null;
+  }
+
+  // ------------------------------------------
+  // FORMATO DE FECHA
+  // ------------------------------------------
+
+  function makeDate(date) {
+    return (
+      date.year + "-" +
+      String(date.month + 1).padStart(2, "0") + "-" +
+      String(date.day).padStart(2, "0")
     );
   }
 
   // ------------------------------------------
-  // ARMAR RESULTADOS
+  // ANALIZAR TODAS LAS FILAS
   // ------------------------------------------
-
-  function makeDate(date) {
-    return date.year + "-" +
-      String(date.month + 1).padStart(2, "0") + "-" +
-      String(date.day).padStart(2, "0");
-  }
 
   function extractCandidates(rows, dateRow, dates) {
     const people = getPeople(rows, dateRow, dates);
@@ -584,7 +535,7 @@ window.LeoReader = (function () {
         if (!words.length) return;
 
         const raw = words
-          .map(w => w.text)
+          .map(word => word.text)
           .join(" ");
 
         const parsed = parseHours(raw);
@@ -592,8 +543,9 @@ window.LeoReader = (function () {
         if (!parsed) return;
 
         const confidence = Math.round(
-          words.reduce((sum, w) => sum + w.confidence, 0) /
-          words.length
+          words.reduce(
+            (sum, word) => sum + word.confidence, 0
+          ) / words.length
         );
 
         candidates.push({
@@ -622,26 +574,22 @@ window.LeoReader = (function () {
 
     const image = await loadImage(file);
 
-    report(progress, 10, "Recortando márgenes...");
+    report(progress, 15, "Mejorando imagen...");
 
-    const cropped = cropBlackMargins(image);
-
-    report(progress, 20, "Mejorando imagen...");
-
-    const prepared = prepareOCR(cropped);
+    const prepared = prepareOCR(image);
 
     report(progress, 30, "Reconociendo texto...");
 
     const data = await recognize(prepared, progress);
 
-    report(progress, 80, "Analizando filas y fechas...");
+    report(progress, 80, "Analizando cronograma...");
 
     const words = getWords(data);
     const rows = clusterRows(words);
 
     if (!rows.length) {
       throw new Error(
-        "No se pudo reconocer texto. Probá con otra imagen."
+        "No se pudo reconocer texto. Probá con una imagen más nítida."
       );
     }
 
@@ -649,11 +597,11 @@ window.LeoReader = (function () {
 
     if (!dateRow) {
       throw new Error(
-        "No se pudieron identificar los números de los días. El OCR no encontró una fila de fechas suficiente."
+        "No se identificó la fila de días. Revisá que se vea completa la parte superior del cronograma."
       );
     }
 
-    report(progress, 85, "Identificando meses...");
+    report(progress, 85, "Identificando fechas...");
 
     const months = findMonths(rows, dateRow);
     const dates = buildDates(dateRow, months);
@@ -662,7 +610,11 @@ window.LeoReader = (function () {
       throw new Error("No se pudieron interpretar las fechas.");
     }
 
-    report(progress, 92, "Buscando trabajadores y horarios...");
+    report(progress, 90, "Buscando todos los pasajeros...");
+
+    const people = getPeople(rows, dateRow, dates);
+
+    report(progress, 94, "Leyendo horarios de cada fila...");
 
     const candidates = extractCandidates(
       rows,
@@ -673,7 +625,9 @@ window.LeoReader = (function () {
     report(
       progress,
       100,
-      "Lectura finalizada: " +
+      "Lectura terminada: " +
+      people.length +
+      " pasajeros y " +
       candidates.length +
       " horarios encontrados."
     );
