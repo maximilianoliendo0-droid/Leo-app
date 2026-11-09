@@ -1,14 +1,16 @@
 
 /* ==========================================
    TRANSPORTE LEO - LECTOR OCR
-   Diagnostico de filas, columnas y horarios
+   Doble lectura y detección flexible
    ========================================== */
 
 window.LeoReader = (function () {
   "use strict";
 
   function progress(callback, percent, message) {
-    if (typeof callback === "function") callback(percent, message);
+    if (typeof callback === "function") {
+      callback(percent, message);
+    }
   }
 
   function clean(value) {
@@ -39,7 +41,7 @@ window.LeoReader = (function () {
   }
 
   function prepareImage(image) {
-    const scale = Math.min(3, Math.max(1.5, 2400 / image.width));
+    const scale = Math.min(3, Math.max(1.5, 2600 / image.width));
     const canvas = document.createElement("canvas");
 
     canvas.width = Math.round(image.width * scale);
@@ -54,8 +56,10 @@ window.LeoReader = (function () {
 
     ctx.drawImage(
       image,
-      0, 0, image.width, image.height,
-      0, 0, canvas.width, canvas.height
+      0, 0,
+      image.width, image.height,
+      0, 0,
+      canvas.width, canvas.height
     );
 
     return canvas;
@@ -70,13 +74,37 @@ window.LeoReader = (function () {
 
     try {
       await worker.setParameters({
-        preserve_interword_spaces: "1"
+        preserve_interword_spaces: "1",
+        tessedit_pageseg_mode: "6"
       });
 
-      const result = await worker.recognize(canvas);
-      progress(callback, 75, "Texto reconocido.");
+      const normal = await worker.recognize(canvas);
 
-      return result.data;
+      progress(
+        callback,
+        58,
+        "Primera lectura terminada. Probando otra distribución..."
+      );
+
+      await worker.setParameters({
+        preserve_interword_spaces: "1",
+        tessedit_pageseg_mode: "11"
+      });
+
+      const dispersed = await worker.recognize(canvas);
+
+      progress(callback, 76, "Comparando las dos lecturas...");
+
+      return [
+        {
+          mode: "Lectura ordenada",
+          data: normal.data
+        },
+        {
+          mode: "Lectura dispersa",
+          data: dispersed.data
+        }
+      ];
     } finally {
       await worker.terminate();
     }
@@ -106,29 +134,42 @@ window.LeoReader = (function () {
     const rows = [];
 
     sorted.forEach(word => {
-      let rowFound = null;
-      let distanceFound = Infinity;
+      let best = null;
+      let bestDistance = Infinity;
 
       rows.forEach(row => {
         const distance = Math.abs(row.y - word.y);
-        const tolerance = Math.max(9, word.height * 0.65);
+        const tolerance = Math.max(
+          12,
+          Math.min(word.height, row.height || word.height) * 0.8
+        );
 
-        if (distance < tolerance && distance < distanceFound) {
-          rowFound = row;
-          distanceFound = distance;
+        if (distance <= tolerance && distance < bestDistance) {
+          best = row;
+          bestDistance = distance;
         }
       });
 
-      if (!rowFound) {
-        rowFound = { y: word.y, words: [] };
-        rows.push(rowFound);
+      if (!best) {
+        best = {
+          y: word.y,
+          height: word.height,
+          words: []
+        };
+        rows.push(best);
       }
 
-      rowFound.words.push(word);
+      best.words.push(word);
 
-      rowFound.y = rowFound.words.reduce(
-        (sum, item) => sum + item.y, 0
-      ) / rowFound.words.length;
+      best.y = best.words.reduce(
+        (sum, item) => sum + item.y,
+        0
+      ) / best.words.length;
+
+      best.height = best.words.reduce(
+        (sum, item) => sum + item.height,
+        0
+      ) / best.words.length;
     });
 
     rows.forEach(row => {
@@ -139,19 +180,16 @@ window.LeoReader = (function () {
   }
 
   function numbersIn(text) {
-    let value = clean(text)
+    const value = clean(text)
       .replace(/[Oo]/g, "0")
-      .replace(/[Il|]/g, "1");
+      .replace(/[Il|]/g, "1")
+      .replace(/^[^\d]+|[^\d]+$/g, "");
 
-    value = value.replace(/^[^\d]+|[^\d]+$/g, "");
+    const matches = value.match(/\d{1,2}/g) || [];
 
-    if (!/^\d{1,2}$/.test(value)) return [];
-
-    const number = Number(value);
-
-    if (number < 1 || number > 31) return [];
-
-    return [number];
+    return matches
+      .map(Number)
+      .filter(number => number >= 1 && number <= 31);
   }
 
   function findDaysRow(rows) {
@@ -163,7 +201,10 @@ window.LeoReader = (function () {
 
       row.words.forEach(word => {
         numbersIn(word.text).forEach(day => {
-          found.push({ day, x: word.x });
+          found.push({
+            day,
+            x: word.x
+          });
         });
       });
 
@@ -182,7 +223,7 @@ window.LeoReader = (function () {
       if (unique.length < 3) return;
 
       let ascending = 0;
-      let repeated = 0;
+      let descending = 0;
 
       for (let i = 1; i < unique.length; i++) {
         const previous = unique[i - 1].day;
@@ -190,10 +231,13 @@ window.LeoReader = (function () {
 
         if (current > previous) {
           ascending++;
-        } else if (current === previous) {
-          repeated++;
-        } else if (previous >= 25 && current <= 5) {
+        } else if (
+          previous >= 25 &&
+          current <= 5
+        ) {
           ascending++;
+        } else {
+          descending++;
         }
       }
 
@@ -201,18 +245,20 @@ window.LeoReader = (function () {
         unique[unique.length - 1].x - unique[0].x;
 
       const score =
-        unique.length * 8 +
-        ascending * 14 -
-        repeated * 8 +
+        unique.length * 10 +
+        ascending * 12 -
+        descending * 5 +
         spread / 150 -
-        index * 0.15;
+        index * 0.1;
 
       if (score > bestScore) {
         bestScore = score;
+
         best = {
           index,
           row,
-          days: unique
+          days: unique,
+          score
         };
       }
     });
@@ -234,7 +280,9 @@ window.LeoReader = (function () {
     for (let i = 1; i < days.length; i++) {
       const distance = days[i].x - days[i - 1].x;
 
-      if (distance > 5) distances.push(distance);
+      if (distance > 5) {
+        distances.push(distance);
+      }
     }
 
     return median(distances);
@@ -305,12 +353,15 @@ window.LeoReader = (function () {
       if (name.length < 3) return;
 
       if (
-        /nombre|personal|horario|feriado|vacaciones|total|observaciones|turno/i.test(name)
+        /nombre|personal|horario|feriado|vacaciones|total|observaciones|turno|lunes|martes|miercoles|jueves|viernes|sabado|domingo/i.test(name)
       ) return;
 
       if (!/[a-záéíóúñ]/i.test(name)) return;
 
-      passengers.push({ name, row });
+      passengers.push({
+        name,
+        row
+      });
     });
 
     return passengers;
@@ -409,14 +460,19 @@ window.LeoReader = (function () {
       });
     });
 
-    return { passengers, candidates };
+    return {
+      passengers,
+      candidates
+    };
   }
 
   function buildDiagnostic(rows, dayRow, dates, result) {
     const out = [];
 
-    out.push("PALABRAS OCR: " +
-      rows.reduce((n, row) => n + row.words.length, 0));
+    out.push(
+      "PALABRAS OCR: " +
+      rows.reduce((n, row) => n + row.words.length, 0)
+    );
 
     out.push("FILAS OCR: " + rows.length);
 
@@ -431,7 +487,7 @@ window.LeoReader = (function () {
       );
     } else {
       out.push("FILA DE DIAS DETECTADA: NO");
-      out.push("FILAS QUE PARECEN TENER NUMEROS:");
+      out.push("NUMEROS RECONOCIDOS:");
 
       rows.forEach(row => {
         const nums = [];
@@ -443,14 +499,19 @@ window.LeoReader = (function () {
         });
 
         if (nums.length) {
-          out.push("Y=" + Math.round(row.y) + " | " + nums.join(" "));
+          out.push(
+            "Y=" + Math.round(row.y) +
+            " | " + nums.join(" ")
+          );
         }
       });
     }
 
     if (result) {
-      out.push("PASAJEROS DETECTADOS: " +
-        result.passengers.length);
+      out.push(
+        "PASAJEROS DETECTADOS: " +
+        result.passengers.length
+      );
 
       result.passengers.forEach((p, i) => {
         out.push(
@@ -460,21 +521,25 @@ window.LeoReader = (function () {
         );
       });
 
-      out.push("HORARIOS DETECTADOS: " +
-        result.candidates.length);
+      out.push(
+        "HORARIOS DETECTADOS: " +
+        result.candidates.length
+      );
 
-      result.candidates.slice(0, 80).forEach(c => {
+      result.candidates.slice(0, 100).forEach(c => {
         out.push(
-          c.person + " | " + c.date + " | " + c.hours +
-          " | OCR: " + c.raw
+          c.person + " | " +
+          c.date + " | " +
+          c.hours + " | OCR: " +
+          c.raw
         );
       });
     }
 
     out.push("");
-    out.push("FILAS OCR CON POSICIONES (Y / X):");
+    out.push("FILAS OCR CON POSICIONES:");
 
-    rows.slice(0, 45).forEach((row, i) => {
+    rows.slice(0, 50).forEach((row, i) => {
       const parts = row.words.map(word =>
         Math.round(word.x) + ":" + word.text
       );
@@ -486,30 +551,19 @@ window.LeoReader = (function () {
       );
     });
 
-    if (rows.length > 45) {
-      out.push("... se omitieron " +
-        (rows.length - 45) + " filas adicionales.");
+    if (rows.length > 50) {
+      out.push(
+        "... se omitieron " +
+        (rows.length - 50) +
+        " filas adicionales."
+      );
     }
 
     return out.join("\n");
   }
 
-  async function scan(file, callback) {
-    progress(callback, 0, "Preparando imagen...");
-
-    const image = await loadImage(file);
-
-    progress(callback, 15, "Preparando cronograma...");
-
-    const canvas = prepareImage(image);
-
-    progress(callback, 30, "Leyendo texto con OCR...");
-
-    const data = await recognize(canvas, callback);
-    const fullText = data.text || "";
-
-    progress(callback, 80, "Analizando filas y columnas...");
-
+  function analyzeReading(reading) {
+    const data = reading.data;
     const words = getWords(data);
     const rows = makeRows(words);
 
@@ -522,12 +576,54 @@ window.LeoReader = (function () {
 
       if (dayRow) {
         dates = getDateObjects(dayRow);
-
-        progress(callback, 88, "Buscando pasajeros...");
-
         result = extract(rows, dayRow, dates);
       }
     }
+
+    return {
+      mode: reading.mode,
+      data,
+      words,
+      rows,
+      dayRow,
+      dates,
+      result,
+      candidates: result ? result.candidates.length : 0,
+      passengers: result ? result.passengers.length : 0,
+      dayCount: dayRow ? dayRow.days.length : 0
+    };
+  }
+
+  async function scan(file, callback) {
+    progress(callback, 0, "Preparando imagen...");
+
+    const image = await loadImage(file);
+
+    progress(callback, 15, "Preparando cronograma...");
+
+    const canvas = prepareImage(image);
+
+    progress(callback, 30, "Realizando dos lecturas OCR...");
+
+    const readings = await recognize(canvas, callback);
+
+    progress(callback, 80, "Analizando días, pasajeros y horarios...");
+
+    const attempts = readings.map(analyzeReading);
+
+    attempts.sort((a, b) =>
+      b.candidates - a.candidates ||
+      b.passengers - a.passengers ||
+      b.dayCount - a.dayCount ||
+      b.words.length - a.words.length
+    );
+
+    const best = attempts[0];
+
+    const rows = best.rows;
+    const dayRow = best.dayRow;
+    const dates = best.dates;
+    const result = best.result;
 
     const diagnostic = buildDiagnostic(
       rows,
@@ -535,6 +631,18 @@ window.LeoReader = (function () {
       dates,
       result
     );
+
+    const comparison = [
+      "COMPARACION DE LECTURAS OCR:",
+      ...attempts.map(item =>
+        item.mode.toUpperCase() +
+        ": " + item.candidates + " horarios, " +
+        item.passengers + " pasajeros, " +
+        item.dayCount + " días y " +
+        item.words.length + " palabras."
+      ),
+      "LECTURA ELEGIDA: " + best.mode.toUpperCase()
+    ].join("\n");
 
     const passengersCount = result
       ? result.passengers.length
@@ -560,8 +668,10 @@ window.LeoReader = (function () {
       candidates: result ? result.candidates : [],
       dates,
       text:
-        fullText +
-        "\n\n========== DIAGNOSTICO GEOMETRICO ==========\n" +
+        (best.data.text || "") +
+        "\n\n========== COMPARACION OCR ==========\n" +
+        comparison +
+        "\n\n========== DIAGNOSTICO ==========\n" +
         diagnostic,
       passengersFound: passengersCount
     };
